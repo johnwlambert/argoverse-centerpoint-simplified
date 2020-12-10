@@ -4,13 +4,12 @@ import time
 import numpy as np
 import spconv
 import torch
-from det3d.models.utils import Empty, 
 from spconv import SparseConv3d, SubMConv3d
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules.batchnorm import _BatchNorm
 
-from ..utils import build_norm_layer
+from norm_layers import build_norm_layer
 
 
 class SpMiddleResNetFHD(nn.Module):
