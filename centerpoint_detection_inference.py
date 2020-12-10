@@ -6,6 +6,7 @@ import copy
 import json
 import logging
 import os
+import pdb
 import pickle 
 import sys
 import time
@@ -24,14 +25,16 @@ from argoverse.utils.json_utils import read_json_file, save_json_dict
 from argoverse.utils.pkl_utils import load_pkl_dictionary
 
 import numpy as np
+import six
 import torch
 import yaml
-from det3d import __version__, torchie
-from det3d.datasets import build_dataloader, build_dataset
-from det3d.models import build_detector
-from det3d.torchie import Config
-from det3d.torchie.trainer import load_checkpoint
-from det3d.torchie.trainer.utils import all_gather
+# from det3d import __version__, torchie
+# from det3d.datasets import build_dataloader, build_dataset
+
+from utils.config import Config
+from registry import DETECTORS
+# from det3d.torchie.trainer import load_checkpoint
+# from det3d.torchie.trainer.utils import all_gather
 
 
 """
@@ -47,7 +50,7 @@ def save_pred(pred, root):
 def parse_args():
     """ """
     args_dict = {
-        'config': 'configs/centerpoint/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset.py',
+        'config': 'configs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset.py',
         'work_dir': 'work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset',
         'checkpoint': 'work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/epoch_20.pth',
         'txt_result': False,
@@ -157,9 +160,102 @@ def batch_processor(model, data, train_mode, **kwargs):
         return model(example, return_loss=False)
 
 
+
+
+def build_detector(cfg, train_cfg=None, test_cfg=None):
+
+    registry = DETECTORS
+    default_args=dict(train_cfg=train_cfg, test_cfg=test_cfg)
+    return build_from_cfg(cfg, registry, default_args)
+
+
+def is_str(x):
+    """Whether the input is an string instance."""
+    return isinstance(x, six.string_types)
+
+
+def build_from_cfg(cfg, registry, default_args=None):
+    """Build a module from config dict.
+    Args:
+        cfg (dict): Config dict. It should at least contain the key "type".
+        registry (:obj:`Registry`): The registry to search the type from.
+        default_args (dict, optional): Default initialization arguments.
+    Returns:
+        obj: The constructed object.
+    """
+
+    from scn_backbone import SpMiddleResNetFHD
+    from center_head import CenterHead
+    from rpn import RPN
+    from voxel_encoder import VoxelFeatureExtractorV3
+    from voxelnet import VoxelNet
+
+    reader = VoxelFeatureExtractorV3(
+        num_input_features = 5,
+        norm_cfg = None
+    )
+    backbone = SpMiddleResNetFHD(
+        num_input_features = 5,
+        ds_factor = 8,
+        norm_cfg = None
+    )
+    neck = RPN(
+        layer_nums = [5, 5],
+        ds_layer_strides = [1, 2],
+        ds_num_filters = [128, 256],
+        us_layer_strides = [1, 2],
+        us_num_filters = [256, 256],
+        num_input_features = 256,
+        norm_cfg = None,
+        logger = None # <Logger RPN (INFO)>
+    )
+    bbox_head = CenterHead(
+        mode = '3d',
+        in_channels = 512,
+        norm_cfg = None,
+        tasks = [
+            {'num_class': 1, 'class_names': ['car']},
+            {'num_class': 2, 'class_names': ['truck', 'construction_vehicle']},
+            {'num_class': 2, 'class_names': ['bus', 'trailer']},
+            {'num_class': 1, 'class_names': ['barrier']},
+            {'num_class': 2, 'class_names': ['motorcycle', 'bicycle']},
+            {'num_class': 2, 'class_names': ['pedestrian', 'traffic_cone']}
+        ],
+        dataset = 'nuscenes',
+        weight = 0.25,
+        code_weights = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2, 1.0, 1.0],
+        common_heads = {
+            'reg': (2, 2),
+            'height': (1, 2),
+            'dim': (3, 2),
+            'rot': (2, 2),
+            'vel': (2, 2)
+        },
+        encode_rad_error_by_sin = False,
+        direction_offset = 0.0,
+        share_conv_channel = 64,
+        dcn_head = True,
+        bn = True
+    )
+
+    detector = VoxelNet(
+        reader=reader,
+        backbone=backbone,
+        neck=neck,
+        bbox_head=bbox_head,
+        train_cfg=None,
+        test_cfg=None,
+        pretrained=None
+    )
+    return detector
+
+
+
 def main():
     """ """
     args = parse_args()
+
+    pdb.set_trace()
 
     cfg = Config.fromfile(args.config)
     cfg.local_rank = args.local_rank
