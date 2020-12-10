@@ -1,10 +1,8 @@
+
+
 import torch.nn as nn
 
-from .. import builder
-
 from base_detector import BaseDetector
-
-
 
 class SingleStageDetector(BaseDetector):
     def __init__(
@@ -18,11 +16,11 @@ class SingleStageDetector(BaseDetector):
         pretrained=None,
     ):
         super(SingleStageDetector, self).__init__()
-        self.reader = builder.build_reader(reader)
-        self.backbone = builder.build_backbone(backbone)
+        self.reader = reader
+        self.backbone = backbone
         if neck is not None:
-            self.neck = builder.build_neck(neck)
-        self.bbox_head = builder.build_head(bbox_head)
+            self.neck = neck
+        self.bbox_head = bbox_head
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 

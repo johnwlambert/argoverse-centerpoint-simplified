@@ -9,14 +9,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from det3d.torchie.cnn import constant_init,  xavier_init
-from det3d.models.utils import Empty, GroupNorm, Sequential
-from det3d.models.utils import change_default_args
+from det3d.torchie.cnn import xavier_init
+from det3d.models.utils import Empty, Sequential
 
-from .. import builder
-from ..registry import NECKS
 from ..utils import build_norm_layer
-
 
 
 class RPN(nn.Module):
