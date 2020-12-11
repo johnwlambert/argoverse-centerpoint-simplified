@@ -21,18 +21,20 @@ except:
 
 import torch.distributed as dist
 
-from argoverse.utils.json_utils import read_json_file, save_json_dict
-from argoverse.utils.pkl_utils import load_pkl_dictionary
 
 import numpy as np
 import six
 import torch
 import yaml
+from argoverse.utils.json_utils import read_json_file, save_json_dict
+from argoverse.utils.pkl_utils import load_pkl_dictionary
+
+
 # from det3d import __version__, torchie
 # from det3d.datasets import build_dataloader, build_dataset
 
-from utils.config import Config
-from registry import DETECTORS
+from centerpoint.utils.config import Config
+from centerpoint.registry import DETECTORS
 # from det3d.torchie.trainer import load_checkpoint
 # from det3d.torchie.trainer.utils import all_gather
 
@@ -184,11 +186,11 @@ def build_from_cfg(logger, cfg, registry, default_args=None):
         obj: The constructed object.
     """
 
-    from scn_backbone import SpMiddleResNetFHD
-    from center_head import CenterHead
-    from rpn import RPN
-    from voxel_encoder import VoxelFeatureExtractorV3
-    from voxelnet import VoxelNet
+    from centerpoint.models.scn_backbone import SpMiddleResNetFHD
+    from centerpoint.models.center_head import CenterHead
+    from centerpoint.models.rpn import RPN
+    from centerpoint.models.voxel_encoder import VoxelFeatureExtractorV3
+    from centerpoint.models.voxelnet import VoxelNet
 
     reader = VoxelFeatureExtractorV3(
         num_input_features = 5,
@@ -251,28 +253,86 @@ def build_from_cfg(logger, cfg, registry, default_args=None):
 
 
 
-# import copy
-
-# from det3d.utils import build_from_cfg
-
-# from .dataset_wrappers import ConcatDataset, RepeatDataset
-# from .registry import DATASETS
-
-
 def build_dataset(cfg, default_args=None):
     """ """
     pdb.set_trace()
 
-    if isinstance(cfg, (list, tuple)):
-        dataset = ConcatDataset([build_dataset(c, default_args) for c in cfg])
-    elif cfg["type"] == "RepeatDataset":
-        dataset = RepeatDataset(
-            build_dataset(cfg["dataset"], default_args), cfg["times"]
-        )
-    # elif isinstance(cfg['ann_file'], (list, tuple)):
-    #     dataset = _concat_dataset(cfg, default_args)
-    else:
-        dataset = build_from_cfg(cfg, DATASETS, default_args)
+    from centerpoint.pipelines.preprocess import AssignLabel
+    from centerpoint.pipelines.test_aug import DoubleFlip
+    from centerpoint.pipelines.nuscenes_dataset import LoadPointCloudAnnotations
+
+    dataset = NuScenesDataset(
+        info_path = 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
+        root_path = 'data/nuScenes/v1.0-test',
+        test_mode = True,
+        class_names = [
+            'car',
+            'truck',
+            'construction_vehicle',
+            'bus',
+            'trailer',
+            'barrier',
+            'motorcycle',
+            'bicycle',
+            'pedestrian',
+            'traffic_cone'
+        ],
+        nsweeps = 10,
+        'ann_file': 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
+
+        pipeline = [
+            {
+                LoadPointCloudFromFile()
+                'dataset': 'NuScenesDataset'
+            },
+            {
+                LoadPointCloudAnnotations('with_bbox': True)
+            },
+            {
+                Preprocess(
+                'cfg': {
+                    'mode': 'val',
+                    'shuffle_points': False,
+                    'remove_environment': False,
+                    'remove_unknown_examples': False
+                })
+            },
+            { DoubleFlip() },
+            {
+                'type': 'Voxelization',
+                'cfg': {
+                    'range': [-54, -54, -5.0, 54, 54, 3.0],
+                    'voxel_size': [0.075, 0.075, 0.2],
+                    'max_points_in_voxel': 10,
+                    'max_voxel_num': 90000,
+                    'double_flip': True
+                }
+            },
+            {
+                AssignLabel(
+                'cfg': {
+                    'target_assigner': {
+                        'tasks': [
+                            {'num_class': 1, 'class_names': ['car']},
+                            {'num_class': 2, 'class_names': ['truck', 'construction_vehicle']},
+                            {'num_class': 2, 'class_names': ['bus', 'trailer']},
+                            {'num_class': 1, 'class_names': ['barrier']},
+                            {'num_class': 2, 'class_names': ['motorcycle', 'bicycle']},
+                            {'num_class': 2, 'class_names': ['pedestrian', 'traffic_cone']}
+                        ]
+                    },
+                    'out_size_factor': 8,
+                    'dense_reg': 1,
+                    'gaussian_overlap': 0.1,
+                    'max_objs': 500,
+                    'min_radius': 2
+                })
+            },
+            {
+                Reformat(double_flip = True)
+            }
+        ]
+    )
 
     return dataset
 
