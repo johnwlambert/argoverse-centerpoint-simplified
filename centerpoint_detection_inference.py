@@ -42,6 +42,9 @@ from centerpoint.registry import DETECTORS
 """
 python tools/dist_test.py configs/centerpoint/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset.py --work_dir work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset  --checkpoint work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/epoch_20.pth  --speed_test 
 
+
+other model
+https://github.com/tianweiy/CenterPoint/blob/master/configs/centerpoint/nusc_centerpoint_voxelnet_dcn_0075voxel_flip.py
 """
 
 def save_pred(pred, root):
@@ -371,7 +374,7 @@ def main():
         print("Use Val Set")
         dataset = build_dataset(cfg.data.val)
 
-    from centerpoint_dataloader import build_dataloader
+    from centerpoint.dataset.centerpoint_dataloader import build_dataloader
     
     data_loader = build_dataloader(
         dataset,
@@ -382,6 +385,7 @@ def main():
     )
 
     pdb.set_trace()
+    from centerpoint.utils.checkpoint import load_checkpoint
     checkpoint = load_checkpoint(model, args.checkpoint, map_location="cpu")
 
     model = model.cuda()
