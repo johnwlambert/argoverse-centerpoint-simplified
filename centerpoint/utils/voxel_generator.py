@@ -52,7 +52,7 @@ class Voxelization(object):
         self.max_points_in_voxel = cfg.max_points_in_voxel
         self.max_voxel_num = cfg.max_voxel_num
 
-        self.double_flip = cfg.get('double_flip', False)
+        self.double_flip = cfg.__dict__.get('double_flip', False)
 
         self.voxel_generator = VoxelGenerator(
             voxel_size=self.voxel_size,
