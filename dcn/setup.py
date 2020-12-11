@@ -1,6 +1,11 @@
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
+"""
+change AT_CHECK to TORCH_CHECK
+https://discuss.pytorch.org/t/my-pytorch-model-stop-logging-without-error/77686/7
+"""
+
 setup(
     name='masked_conv',
     ext_modules=[
