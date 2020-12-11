@@ -251,6 +251,33 @@ def build_from_cfg(cfg, registry, default_args=None):
 
 
 
+# import copy
+
+# from det3d.utils import build_from_cfg
+
+# from .dataset_wrappers import ConcatDataset, RepeatDataset
+# from .registry import DATASETS
+
+
+def build_dataset(cfg, default_args=None):
+    """ """
+    pdb.set_trace()
+
+    if isinstance(cfg, (list, tuple)):
+        dataset = ConcatDataset([build_dataset(c, default_args) for c in cfg])
+    elif cfg["type"] == "RepeatDataset":
+        dataset = RepeatDataset(
+            build_dataset(cfg["dataset"], default_args), cfg["times"]
+        )
+    # elif isinstance(cfg['ann_file'], (list, tuple)):
+    #     dataset = _concat_dataset(cfg, default_args)
+    else:
+        dataset = build_from_cfg(cfg, DATASETS, default_args)
+
+    return dataset
+
+
+
 def main():
     """ """
     args = parse_args()
@@ -285,6 +312,7 @@ def main():
         print("Use Val Set")
         dataset = build_dataset(cfg.data.val)
 
+    from centerpoint_dataloader import build_dataloader
     data_loader = build_dataloader(
         dataset,
         batch_size=cfg.data.samples_per_gpu if not args.speed_test else 1,
