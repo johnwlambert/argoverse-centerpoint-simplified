@@ -372,6 +372,7 @@ def main():
         dataset = build_dataset(cfg.data.val)
 
     from centerpoint_dataloader import build_dataloader
+    
     data_loader = build_dataloader(
         dataset,
         batch_size=cfg.data.samples_per_gpu if not args.speed_test else 1,
@@ -380,6 +381,7 @@ def main():
         shuffle=False,
     )
 
+    pdb.set_trace()
     checkpoint = load_checkpoint(model, args.checkpoint, map_location="cpu")
 
     model = model.cuda()
@@ -387,8 +389,8 @@ def main():
     mode = "val"
 
     logger.info(f"work dir: {args.work_dir}")
-    if cfg.local_rank == 0:
-        prog_bar = torchie.ProgressBar(len(data_loader.dataset) // cfg.gpus)
+    # if cfg.local_rank == 0:
+    #     prog_bar = torchie.ProgressBar(len(data_loader.dataset) // cfg.gpus)
 
     detections = {}
     cpu_device = torch.device("cpu")
@@ -402,6 +404,7 @@ def main():
     time_end = 0 
 
     for i, data_batch in enumerate(data_loader):
+        print(f'{i}/{len(data_loader)}')
         if i == start:
             torch.cuda.synchronize()
             time_start = time.time()
@@ -422,8 +425,8 @@ def main():
             detections.update(
                 {token: output,}
             )
-            if args.local_rank == 0:
-                prog_bar.update()
+            # if args.local_rank == 0:
+            #     prog_bar.update()
 
     all_predictions = all_gather(detections)
 
