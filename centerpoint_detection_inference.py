@@ -264,6 +264,8 @@ def build_dataset(cfg, default_args=None):
     from centerpoint.nuscenes_dataset import Reformat
     from centerpoint.utils.voxel_generator import Voxelization
 
+    from centerpoint.nuscenes_datasert import NuScenesDataset
+
     pipeline = Compose([
             LoadPointCloudFromFile(dataset = 'NuScenesDataset'),
             LoadPointCloudAnnotations(with_bbox = True),
