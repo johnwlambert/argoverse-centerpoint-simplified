@@ -17,7 +17,7 @@ from centernet_loss import FocalLoss, SmoothRegLoss, RegLoss
 from center_utils import ddd_decode, _transpose_and_gather_feat
 
 # from det3d.models.builder import build_loss
-from det3d.torchie.cnn import constant_init, kaiming_init
+from weight_init import constant_init, kaiming_init
 # from det3d.torchie.trainer import load_checkpoint
 
 from torch.nn.modules.batchnorm import _BatchNorm
@@ -29,6 +29,7 @@ except:
 
 
 """
+To build DCN:
 python setup.py build_ext --inplace
 """
 
