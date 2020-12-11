@@ -257,10 +257,12 @@ def build_dataset(cfg, default_args=None):
     """ """
     pdb.set_trace()
 
-    from centerpoint.utils.preprocess import AssignLabel
+    from centerpoint.utils.preprocess import AssignLabel, Preprocess
     from centerpoint.utils.test_aug import DoubleFlip
     from centerpoint.utils.loading import LoadPointCloudAnnotations, LoadPointCloudFromFile
     from centerpoint.utils.compose import Compose
+    from centerpoint.nuscenes_dataset import Reformat
+    from centerpoint.utils.voxel_generator import Voxelization
 
     pipeline = Compose([
             LoadPointCloudFromFile(dataset = 'NuScenesDataset'),
@@ -302,7 +304,7 @@ def build_dataset(cfg, default_args=None):
                     'min_radius': 2
                 })
             ),
-            Reformat(double_flip = True)
+            Reformat(double_flip=True)
         ])
 
 

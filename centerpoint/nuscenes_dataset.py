@@ -16,7 +16,7 @@ except:
     print("nuScenes devkit not found!")
 
 from centerpoint.dataset.point_cloud_dataset import PointCloudDataset
-from nusc_common import (
+from centerpoint.nusc_common import (
     general_to_detection,
     cls_attr_dist,
     _second_det_to_nusc_box,
