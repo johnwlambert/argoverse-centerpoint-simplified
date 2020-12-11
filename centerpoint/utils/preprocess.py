@@ -10,13 +10,13 @@ class Preprocess(object):
         self.remove_environment = cfg.remove_environment
         self.shuffle_points = cfg.shuffle_points
         self.remove_unknown = cfg.remove_unknown_examples
-        self.min_points_in_gt = cfg.get("min_points_in_gt", -1)
-        self.add_rgb_to_points = cfg.get("add_rgb_to_points", False)
-        self.reference_detections = cfg.get("reference_detections", None)
-        self.remove_outside_points = cfg.get("remove_outside_points", False)
-        self.random_crop = cfg.get("random_crop", False)
+        self.min_points_in_gt = cfg.__dict__.get("min_points_in_gt", -1)
+        self.add_rgb_to_points = cfg.__dict__.get("add_rgb_to_points", False)
+        self.reference_detections = cfg.__dict__.get("reference_detections", None)
+        self.remove_outside_points = cfg.__dict__.get("remove_outside_points", False)
+        self.random_crop = cfg.__dict__.get("random_crop", False)
 
-        self.normalize_intensity = cfg.get("normalize_intensity", False)
+        self.normalize_intensity = cfg.__dict__.get("normalize_intensity", False)
         
         self.mode = cfg.mode
         if self.mode == "train":
@@ -38,8 +38,8 @@ class Preprocess(object):
             self.npoints = cfg.get("npoints", -1)
             self.random_select = cfg.get("random_select", False)
 
-        self.symmetry_intensity = cfg.get("symmetry_intensity", False)
-        self.kitti_double = cfg.get("kitti_double", False)
+        self.symmetry_intensity = cfg.__dict__.get("symmetry_intensity", False)
+        self.kitti_double = cfg.__dict__.get("kitti_double", False)
 
     def __call__(self, res, info):
 
@@ -268,7 +268,7 @@ class AssignLabel(object):
         self.gaussian_overlap = assigner_cfg.gaussian_overlap
         self._max_objs = assigner_cfg.max_objs
         self._min_radius = assigner_cfg.min_radius
-        self.no_log = assigner_cfg.get("no_log", False)
+        self.no_log = assigner_cfg.__dict__.get("no_log", False)
 
     def __call__(self, res, info):
         max_objs = self._max_objs * self.dense_reg
