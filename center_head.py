@@ -9,10 +9,10 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from det3d.core import box_torch_ops
-from det3d.models.losses.centernet_loss import FocalLoss, SmoothRegLoss, RegLoss
-from det3d.core.utils.center_utils import ddd_decode
-from det3d.models.utils import Sequential
+import box_torch_ops
+from sequential_utils import Sequential
+from centernet_loss import FocalLoss, SmoothRegLoss, RegLoss
+from center_utils import ddd_decode
 
 
 

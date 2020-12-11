@@ -9,10 +9,19 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from det3d.torchie.cnn import xavier_init
-from det3d.models.utils import Empty, Sequential
 
-from ..utils import build_norm_layer
+from sequential_utils import Sequential
+from norm_layers import build_norm_layer
+
+
+def xavier_init(module, gain=1, bias=0, distribution="normal"):
+    assert distribution in ["uniform", "normal"]
+    if distribution == "uniform":
+        nn.init.xavier_uniform_(module.weight, gain=gain)
+    else:
+        nn.init.xavier_normal_(module.weight, gain=gain)
+    if hasattr(module, "bias") and module.bias is not None:
+        nn.init.constant_(module.bias, bias)
 
 
 class RPN(nn.Module):
