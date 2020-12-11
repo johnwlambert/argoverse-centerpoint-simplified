@@ -162,11 +162,11 @@ def batch_processor(model, data, train_mode, **kwargs):
 
 
 
-def build_detector(cfg, train_cfg=None, test_cfg=None):
+def build_detector(logger, cfg, train_cfg=None, test_cfg=None):
 
     registry = DETECTORS
     default_args=dict(train_cfg=train_cfg, test_cfg=test_cfg)
-    return build_from_cfg(cfg, registry, default_args)
+    return build_from_cfg(logger, cfg, registry, default_args)
 
 
 def is_str(x):
@@ -174,7 +174,7 @@ def is_str(x):
     return isinstance(x, six.string_types)
 
 
-def build_from_cfg(cfg, registry, default_args=None):
+def build_from_cfg(logger, cfg, registry, default_args=None):
     """Build a module from config dict.
     Args:
         cfg (dict): Config dict. It should at least contain the key "type".
@@ -303,7 +303,7 @@ def main():
     logger.info(f"torch.backends.cudnn.benchmark: {torch.backends.cudnn.benchmark}")
 
     pdb.set_trace()
-    model = build_detector(cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
+    model = build_detector(logger, cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
 
     if args.testset:
         print("Use Test Set")
