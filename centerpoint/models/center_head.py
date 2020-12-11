@@ -11,13 +11,13 @@ from torch import nn
 from torch.nn import functional as F
 
 
-import box_torch_ops
-from sequential_utils import Sequential
-from centernet_loss import FocalLoss, SmoothRegLoss, RegLoss
-from center_utils import ddd_decode, _transpose_and_gather_feat
+import centerpoint.utils.box_torch_ops
+from centerpoint.utils.sequential_utils import Sequential
+from centerpoint.utils.centernet_loss import FocalLoss, SmoothRegLoss, RegLoss
+from centerpoint.utils.center_utils import ddd_decode, _transpose_and_gather_feat
 
 # from det3d.models.builder import build_loss
-from weight_init import constant_init, kaiming_init
+from centerpoint.utils.weight_init import constant_init, kaiming_init
 # from det3d.torchie.trainer import load_checkpoint
 
 from torch.nn.modules.batchnorm import _BatchNorm

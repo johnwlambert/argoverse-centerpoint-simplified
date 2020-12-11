@@ -2,7 +2,7 @@
 
 import torch.nn as nn
 
-from base_detector import BaseDetector
+from centerpoint.models.base_detector import BaseDetector
 
 class SingleStageDetector(BaseDetector):
     def __init__(

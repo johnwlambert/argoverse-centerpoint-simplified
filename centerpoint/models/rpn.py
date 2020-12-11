@@ -9,9 +9,9 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from sequential_utils import Sequential
-from norm_layers import build_norm_layer
-from weight_init import xavier_init
+from centerpoint.utils.sequential_utils import Sequential
+from centerpoint.utils.norm_layers import build_norm_layer
+from centerpoint.utils.weight_init import xavier_init
 
 
 class RPN(nn.Module):

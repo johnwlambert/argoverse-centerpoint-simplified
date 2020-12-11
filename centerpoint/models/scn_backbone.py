@@ -15,7 +15,7 @@ from torch.nn.modules.batchnorm import _BatchNorm
 
 
 
-from norm_layers import build_norm_layer
+from centerpoint.utils.norm_layers import build_norm_layer
 
 
 

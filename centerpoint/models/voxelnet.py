@@ -1,6 +1,6 @@
 
 
-from single_stage import SingleStageDetector
+from centerpoint.models.single_stage import SingleStageDetector
 
 class VoxelNet(SingleStageDetector):
     def __init__(
