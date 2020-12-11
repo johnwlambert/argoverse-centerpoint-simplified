@@ -186,8 +186,8 @@ def build_from_cfg(logger, cfg, registry, default_args=None):
         obj: The constructed object.
     """
 
+    from center_head import CenterHead
     from centerpoint.models.scn_backbone import SpMiddleResNetFHD
-    from centerpoint.models.center_head import CenterHead
     from centerpoint.models.rpn import RPN
     from centerpoint.models.voxel_encoder import VoxelFeatureExtractorV3
     from centerpoint.models.voxelnet import VoxelNet
