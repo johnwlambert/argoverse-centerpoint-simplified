@@ -207,7 +207,7 @@ def build_from_cfg(cfg, registry, default_args=None):
         us_num_filters = [256, 256],
         num_input_features = 256,
         norm_cfg = None,
-        logger = None # <Logger RPN (INFO)>
+        logger = logger # <Logger RPN (INFO)>
     )
     bbox_head = CenterHead(
         mode = '3d',
