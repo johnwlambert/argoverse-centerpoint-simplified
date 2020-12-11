@@ -16,7 +16,7 @@ from argoverse.utils.json_utils import read_json_file, save_json_dict
 from nuscenes import NuScenes
 from nuscenes.utils import splits
 
-from pub_tracker import PubTracker as Tracker
+from centerpoint.pub_tracker import PubTracker as Tracker
 
 
 def parse_args():
@@ -35,7 +35,7 @@ def parse_args():
 
 
 def save_first_frame(args):
-    
+    """ """
     nusc = NuScenes(version=args.version, dataroot=args.root, verbose=True)
     if args.version == 'v1.0-trainval':
         scenes = splits.val

@@ -257,9 +257,55 @@ def build_dataset(cfg, default_args=None):
     """ """
     pdb.set_trace()
 
-    from centerpoint.pipelines.preprocess import AssignLabel
-    from centerpoint.pipelines.test_aug import DoubleFlip
-    from centerpoint.pipelines.nuscenes_dataset import LoadPointCloudAnnotations
+    from centerpoint.utils.preprocess import AssignLabel
+    from centerpoint.utils.test_aug import DoubleFlip
+    from centerpoint.utils.loading import LoadPointCloudAnnotations, LoadPointCloudFromFile
+    from centerpoint.utils.compose import Compose
+
+    pipeline = Compose([
+            LoadPointCloudFromFile(dataset = 'NuScenesDataset'),
+            LoadPointCloudAnnotations('with_bbox': True),
+            Preprocess(
+                cfg=SimpleNamespace(**{
+                    'mode': 'val',
+                    'shuffle_points': False,
+                    'remove_environment': False,
+                    'remove_unknown_examples': False
+                })
+            ),
+            DoubleFlip(),
+            Voxelization(
+                cfg = SimpleNamespace(**{
+                    'range': [-54, -54, -5.0, 54, 54, 3.0],
+                    'voxel_size': [0.075, 0.075, 0.2],
+                    'max_points_in_voxel': 10,
+                    'max_voxel_num': 90000,
+                    'double_flip': True
+                })
+            ),
+            AssignLabel(
+                cfg = SimpleNamespace(**{
+                    'target_assigner': SimpleNamespace(**{
+                        'tasks': [
+                            {'num_class': 1, 'class_names': ['car']},
+                            {'num_class': 2, 'class_names': ['truck', 'construction_vehicle']},
+                            {'num_class': 2, 'class_names': ['bus', 'trailer']},
+                            {'num_class': 1, 'class_names': ['barrier']},
+                            {'num_class': 2, 'class_names': ['motorcycle', 'bicycle']},
+                            {'num_class': 2, 'class_names': ['pedestrian', 'traffic_cone']}
+                        ]
+                    }),
+                    'out_size_factor': 8,
+                    'dense_reg': 1,
+                    'gaussian_overlap': 0.1,
+                    'max_objs': 500,
+                    'min_radius': 2
+                })
+            ),
+            Reformat(double_flip = True)
+        ])
+
+    
 
     dataset = NuScenesDataset(
         info_path = 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
@@ -278,60 +324,8 @@ def build_dataset(cfg, default_args=None):
             'traffic_cone'
         ],
         nsweeps = 10,
-        'ann_file': 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
-
-        pipeline = [
-            {
-                LoadPointCloudFromFile()
-                'dataset': 'NuScenesDataset'
-            },
-            {
-                LoadPointCloudAnnotations('with_bbox': True)
-            },
-            {
-                Preprocess(
-                'cfg': {
-                    'mode': 'val',
-                    'shuffle_points': False,
-                    'remove_environment': False,
-                    'remove_unknown_examples': False
-                })
-            },
-            { DoubleFlip() },
-            {
-                'type': 'Voxelization',
-                'cfg': {
-                    'range': [-54, -54, -5.0, 54, 54, 3.0],
-                    'voxel_size': [0.075, 0.075, 0.2],
-                    'max_points_in_voxel': 10,
-                    'max_voxel_num': 90000,
-                    'double_flip': True
-                }
-            },
-            {
-                AssignLabel(
-                'cfg': {
-                    'target_assigner': {
-                        'tasks': [
-                            {'num_class': 1, 'class_names': ['car']},
-                            {'num_class': 2, 'class_names': ['truck', 'construction_vehicle']},
-                            {'num_class': 2, 'class_names': ['bus', 'trailer']},
-                            {'num_class': 1, 'class_names': ['barrier']},
-                            {'num_class': 2, 'class_names': ['motorcycle', 'bicycle']},
-                            {'num_class': 2, 'class_names': ['pedestrian', 'traffic_cone']}
-                        ]
-                    },
-                    'out_size_factor': 8,
-                    'dense_reg': 1,
-                    'gaussian_overlap': 0.1,
-                    'max_objs': 500,
-                    'min_radius': 2
-                })
-            },
-            {
-                Reformat(double_flip = True)
-            }
-        ]
+        ann_file = 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
+        pipeline = pipeline
     )
 
     return dataset

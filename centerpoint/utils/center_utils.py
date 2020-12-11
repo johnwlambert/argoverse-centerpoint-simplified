@@ -11,7 +11,7 @@ import cv2
 import random
 import torch
 from torch import nn
-from circle_nms_jit import circle_nms
+from centerpoint.utils.circle_nms_jit import circle_nms
 
 def flip(img):
   return img[:, :, ::-1].copy()  
