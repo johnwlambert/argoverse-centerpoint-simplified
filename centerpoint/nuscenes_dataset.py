@@ -15,43 +15,14 @@ try:
 except:
     print("nuScenes devkit not found!")
 
-from det3d.datasets.custom import PointCloudDataset
-from det3d.datasets.utils.ground_plane_detection import fit_plane_LSE_RANSAC
-from det3d.datasets.nuscenes.nusc_common import (
+from centerpoint.dataset.point_cloud_dataset import PointCloudDataset
+from nusc_common import (
     general_to_detection,
     cls_attr_dist,
     _second_det_to_nusc_box,
     _lidar_nusc_box_to_global,
     eval_main
 )
-from det3d.datasets.registry import DATASETS
-
-
-
-class LoadPointCloudAnnotations(object):
-    def __init__(self, with_bbox=True, **kwargs):
-        pass
-
-    def __call__(self, res, info):
-
-        if res["type"] in ["NuScenesDataset"] and "gt_boxes" in info:
-            res["lidar"]["annotations"] = {
-                "boxes": info["gt_boxes"].astype(np.float32),
-                "names": info["gt_names"],
-                "tokens": info["gt_boxes_token"],
-                "velocities": info["gt_boxes_velocity"].astype(np.float32),
-            }
-        elif res["type"] == 'WaymoDataset':
-            """res["lidar"]["annotations"] = {
-                "boxes": info["gt_boxes"].astype(np.float32),
-                "names": info["gt_names"],
-            }"""
-            pass # already load in the above function 
-        else:
-            return NotImplementedError
-
-        return res, info
-
 
 
 
@@ -91,9 +62,6 @@ class Reformat(object):
             data_bundle.update(annos=annos, )
 
         if res["mode"] == "train":
-            # ground_plane = res["lidar"].get("ground_plane", None)
-            #if ground_plane:
-            #    data_bundle["ground_plane"] = ground_plane
 
             if "reg_targets" in res["lidar"]["targets"]: # anchor based
                 labels = res["lidar"]["targets"]["labels"]
