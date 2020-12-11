@@ -264,7 +264,7 @@ def build_dataset(cfg, default_args=None):
 
     pipeline = Compose([
             LoadPointCloudFromFile(dataset = 'NuScenesDataset'),
-            LoadPointCloudAnnotations('with_bbox': True),
+            LoadPointCloudAnnotations(with_bbox = True),
             Preprocess(
                 cfg=SimpleNamespace(**{
                     'mode': 'val',
@@ -305,7 +305,7 @@ def build_dataset(cfg, default_args=None):
             Reformat(double_flip = True)
         ])
 
-    
+
 
     dataset = NuScenesDataset(
         info_path = 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
