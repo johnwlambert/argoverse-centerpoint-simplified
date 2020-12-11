@@ -266,7 +266,7 @@ def build_dataset(cfg, default_args=None):
 
     from centerpoint.nuscenes_dataset import NuScenesDataset
 
-    pipeline = Compose([
+    pipeline = [
             LoadPointCloudFromFile(dataset = 'NuScenesDataset'),
             LoadPointCloudAnnotations(with_bbox = True),
             Preprocess(
@@ -307,7 +307,7 @@ def build_dataset(cfg, default_args=None):
                 })
             ),
             Reformat(double_flip=True)
-        ])
+        ]
 
 
 
@@ -332,6 +332,7 @@ def build_dataset(cfg, default_args=None):
         pipeline = pipeline
     )
 
+    pdb.set_trace()
     return dataset
 
 
