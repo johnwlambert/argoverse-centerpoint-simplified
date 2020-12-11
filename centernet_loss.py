@@ -11,7 +11,7 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from det3d.core.utils.center_utils import _transpose_and_gather_feat
+from center_utils import _transpose_and_gather_feat
 
 def _neg_loss(pred, gt):
   ''' Modified focal loss. Exactly the same as CornerNet.
