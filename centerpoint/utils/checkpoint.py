@@ -21,10 +21,7 @@ def load_checkpoint(model, filename, map_location=None, strict=False, logger=Non
         dict or OrderedDict: The loaded checkpoint.
     """
 
-    pdb.set_trace()
-
     # load checkpoint from modelzoo or file or url
-
     if not osp.isfile(filename):
         raise IOError("{} is not a checkpoint file".format(filename))
     checkpoint = torch.load(filename, map_location=map_location)
@@ -90,7 +87,7 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
         table = AsciiTable(table_data)
         err_msg.append(mismatch_info + table.table)
 
-    rank, _ = get_dist_info()
+    rank = 0 # , _ = get_dist_info()
     if len(err_msg) > 0 and rank == 0:
         err_msg.insert(0, "The model and loaded state dict do not match exactly\n")
         err_msg = "\n".join(err_msg)
@@ -100,4 +97,6 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
             logger.warning(err_msg)
         else:
             print(err_msg)
+
+    pdb.set_trace()
 
