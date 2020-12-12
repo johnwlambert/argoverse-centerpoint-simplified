@@ -290,7 +290,12 @@ class AssignLabel(object):
         self._min_radius = assigner_cfg.min_radius
         self.no_log = assigner_cfg.__dict__.get("no_log", False)
 
-    def __call__(self, res, info):
+    def __call__(
+        self,
+        res: Dict[str,Any],
+        info: Dict[str,Any]
+    ) -> Tuple[ Dict[str,Any], Dict[str,Any] ]:
+        """ Effectively skipped at inference time """
         max_objs = self._max_objs * self.dense_reg
         class_names_by_task = [t.class_names for t in self.tasks]
 
