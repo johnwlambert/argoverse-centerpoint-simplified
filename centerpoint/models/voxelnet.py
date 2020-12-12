@@ -17,7 +17,7 @@ class VoxelNet(SingleStageDetector):
             reader, backbone, neck, bbox_head, train_cfg, test_cfg, pretrained
         )
 
-    def extract_feat(self, data):
+    def extract_feat(self, data: Dict[str,Any]):
         input_features = self.reader(data["features"], data["num_voxels"])
         x = self.backbone(
             input_features, data["coors"], data["batch_size"], data["input_shape"]
