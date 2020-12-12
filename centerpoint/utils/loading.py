@@ -25,6 +25,34 @@ def read_file(path, tries=2, num_point_feature=4):
     return points
 
 
+def remove_close(points, radius: float) -> None:
+    """
+    Removes point too close within a certain radius from origin.
+    :param radius: Radius below which points are removed.
+    """
+    x_filt = np.abs(points[0, :]) < radius
+    y_filt = np.abs(points[1, :]) < radius
+    not_close = np.logical_not(np.logical_and(x_filt, y_filt))
+    points = points[:, not_close]
+    return points
+
+
+def read_sweep(sweep):
+    min_distance = 1.0
+    points_sweep = read_file(str(sweep["lidar_path"])).T
+    points_sweep = remove_close(points_sweep, min_distance)
+
+    nbr_points = points_sweep.shape[1]
+    if sweep["transform_matrix"] is not None:
+        points_sweep[:3, :] = sweep["transform_matrix"].dot(
+            np.vstack((points_sweep[:3, :], np.ones(nbr_points)))
+        )[:3, :]
+    curr_times = sweep["time_lag"] * np.ones((1, points_sweep.shape[1]))
+
+    return points_sweep.T, curr_times.T
+
+
+
 
 class LoadPointCloudAnnotations(object):
     def __init__(self, with_bbox=True, **kwargs):
