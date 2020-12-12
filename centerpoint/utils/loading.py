@@ -7,12 +7,31 @@ from copy import deepcopy
 from pathlib import Path
 
 
+
+def read_file(path, tries=2, num_point_feature=4):
+    points = None
+    try_cnt = 0
+    while points is None and try_cnt < tries:
+        try_cnt += 1
+        try:
+            points = np.fromfile(path, dtype=np.float32)
+            s = points.shape[0]
+            if s % 5 != 0:
+                points = points[: s - (s % 5)]
+            points = points.reshape(-1, 5)[:, :num_point_feature]
+        except Exception:
+            points = None
+
+    return points
+
+
+
 class LoadPointCloudAnnotations(object):
     def __init__(self, with_bbox=True, **kwargs):
         pass
 
     def __call__(self, res, info):
-
+        """ """
         if res["type"] in ["NuScenesDataset"] and "gt_boxes" in info:
             res["lidar"]["annotations"] = {
                 "boxes": info["gt_boxes"].astype(np.float32),

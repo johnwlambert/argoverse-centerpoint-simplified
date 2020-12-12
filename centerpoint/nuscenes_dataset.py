@@ -258,7 +258,7 @@ class NuScenesDataset(PointCloudDataset):
         return gt_annos
 
     def get_sensor_data(self, idx):
-
+        """ """
         info = self._nusc_infos[idx]
 
         res = {
