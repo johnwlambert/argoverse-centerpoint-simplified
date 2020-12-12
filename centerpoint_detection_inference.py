@@ -336,6 +336,9 @@ def build_dataset(cfg, default_args=None):
     )
 
     pdb.set_trace()
+    example = dataset[0]
+
+
     return dataset
 
 
