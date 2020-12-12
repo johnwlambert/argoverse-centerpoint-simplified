@@ -98,5 +98,3 @@ def load_state_dict(module, state_dict, strict=False, logger=None):
         else:
             print(err_msg)
 
-    pdb.set_trace()
-
