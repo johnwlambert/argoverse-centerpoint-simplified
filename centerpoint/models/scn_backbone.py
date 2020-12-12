@@ -353,8 +353,23 @@ class SpMiddleResNetFHD(nn.Module):
             nn.ReLU(),
         )
 
-    def forward(self, voxel_features, coors, batch_size, input_shape):
-
+    def forward(
+        self,
+        voxel_features: torch.Tensor,
+        coors: torch.Tensor,
+        batch_size: int,
+        input_shape: np.ndarray
+    ):
+        """
+        Args:
+            voxel_features: tensor of shape [360000, 5]
+            coors: tensor of shape [360000, 4]
+            batch_size: integer
+            input_shape: array of shape (3,) e.g. [1440, 1440,   40]
+        
+        Returns:
+            ret
+        """
         # input: # [41, 1600, 1408]
         sparse_shape = np.array(input_shape[::-1]) + [1, 0, 0]
 
