@@ -1,4 +1,6 @@
 
+from typing import Any, Dict, Tuple
+
 import numpy as np
 
 from centerpoint.utils.center_utils import draw_umich_gaussian, gaussian_radius
@@ -41,8 +43,26 @@ class Preprocess(object):
         self.symmetry_intensity = cfg.__dict__.get("symmetry_intensity", False)
         self.kitti_double = cfg.__dict__.get("kitti_double", False)
 
-    def __call__(self, res, info):
+    def __call__(
+        self,
+        res: Dict[str,Any],
+        info: Dict[str,Any]
+    ) -> Tuple[ Dict[str,Any], Dict[str,Any] ]:
+        """
+        Args:
+            res: dictionary with keys
+                'lidar', 'metadata', 'calib', 'cam', 'mode', 'type'
+            
+                res['lidar'] is also a dictionary, with keys
+                    'type', 'points', 'nsweeps', 'annotations', 'times', 'combined'
 
+            info: dictionary with keys
+                'lidar_path', 'cam_front_path', 'cam_intrinsic', 'token',
+                'sweeps', 'ref_from_car', 'car_from_global', 'timestamp',
+                'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
+        
+                info['gt_boxes'] has a shape (N, 9), e.g. N=37
+        """
         res["mode"] = self.mode
 
         if res["type"] in ["WaymoDataset"]:
@@ -273,7 +293,6 @@ class AssignLabel(object):
     def __call__(self, res, info):
         max_objs = self._max_objs * self.dense_reg
         class_names_by_task = [t.class_names for t in self.tasks]
-
 
         dxy = [(0, 0)]
 

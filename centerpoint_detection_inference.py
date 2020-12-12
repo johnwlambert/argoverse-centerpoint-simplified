@@ -294,12 +294,12 @@ def build_dataset(cfg, default_args=None):
                 cfg = SimpleNamespace(**{
                     'target_assigner': SimpleNamespace(**{
                         'tasks': [
-                            {'num_class': 1, 'class_names': ['car']},
-                            {'num_class': 2, 'class_names': ['truck', 'construction_vehicle']},
-                            {'num_class': 2, 'class_names': ['bus', 'trailer']},
-                            {'num_class': 1, 'class_names': ['barrier']},
-                            {'num_class': 2, 'class_names': ['motorcycle', 'bicycle']},
-                            {'num_class': 2, 'class_names': ['pedestrian', 'traffic_cone']}
+                            SimpleNamespace(**{'num_class': 1, 'class_names': ['car']}),
+                            SimpleNamespace(**{'num_class': 2, 'class_names': ['truck', 'construction_vehicle']}),
+                            SimpleNamespace(**{'num_class': 2, 'class_names': ['bus', 'trailer']}),
+                            SimpleNamespace(**{'num_class': 1, 'class_names': ['barrier']}),
+                            SimpleNamespace(**{'num_class': 2, 'class_names': ['motorcycle', 'bicycle']}),
+                            SimpleNamespace(**{'num_class': 2, 'class_names': ['pedestrian', 'traffic_cone']}),
                         ]
                     }),
                     'out_size_factor': 8,

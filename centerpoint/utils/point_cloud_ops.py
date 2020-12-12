@@ -1,4 +1,5 @@
 import time
+from typing import Tuple
 
 import numba
 import numpy as np
@@ -20,12 +21,11 @@ def _points_to_voxel_reverse_kernel(
     # we shouldn't create large array in main jit code, otherwise
     # reduce performance
     N = points.shape[0]
-    # ndim = points.shape[1] - 1
+
     ndim = 3
     ndim_minus_1 = ndim - 1
     grid_size = (coors_range[3:] - coors_range[:3]) / voxel_size
-    # np.round(grid_size)
-    # grid_size = np.round(grid_size).astype(np.int64)(np.int32)
+
     grid_size = np.round(grid_size, 0, grid_size).astype(np.int32)
     coor = np.zeros(shape=(3,), dtype=np.int32)
     voxel_num = 0
@@ -110,19 +110,27 @@ def _points_to_voxel_kernel(
 
 
 def points_to_voxel(
-    points, voxel_size, coors_range, max_points=35, reverse_index=True, max_voxels=20000
-):
+    points: np.ndarray,
+    voxel_size: np.ndarray,
+    coors_range: np.ndarray,
+    max_points: int = 35,
+    reverse_index: bool = True,
+    max_voxels: int = 20000
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """convert kitti points(N, >=3) to voxels. This version calculate
     everything in one loop. now it takes only 4.2ms(complete point cloud)
     with jit and 3.2ghz cpu.(don't calculate other features)
     Note: this function in ubuntu seems faster than windows 10.
+    
     Args:
         points: [N, ndim] float tensor. points[:, :3] contain xyz points and
             points[:, 3:] contain other information such as reflectivity.
+            e.g. (277783, 5)
         voxel_size: [3] list/tuple or array, float. xyz, indicate voxel size
         coors_range: [6] list/tuple or array, float. indicate voxel range.
             format: xyzxyz, minmax
         max_points: int. indicate maximum points contained in a voxel.
+            max_points=10 is common in config
         reverse_index: boolean. indicate whether return reversed coordinates.
             if points has xyz format and reverse_index is True, output
             coordinates will be zyx format, but points in features always

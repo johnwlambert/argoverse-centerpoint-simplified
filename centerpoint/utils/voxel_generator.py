@@ -1,3 +1,6 @@
+
+from typing import Any, Dict, Tuple
+
 import numpy as np
 from centerpoint.utils.point_cloud_ops import points_to_voxel
 
@@ -46,6 +49,21 @@ class VoxelGenerator:
 
 class Voxelization(object):
     def __init__(self, **kwargs):
+        """
+        voxel_generator.grid_size will be populated with an array
+            of shape (3,) e.g. [1440, 1440,   40]
+
+            if 54 meter range, and voxel size 0.075, then
+                54 / 0.075 = 720, becomes grid of size 1440 x 1440
+
+        Args:
+            cfg: object with attributes as follows:
+
+                cfg.voxel_size should be a float array of shape (3,)
+                    e.g. [0.075, 0.075, 0.2 ]
+                cfg.point_cloud_range should be a float array of shape (6,)
+                    e.g. [-54., -54.,  -5.,  54.,  54.,   3.]
+        """
         cfg = kwargs.get("cfg", None)
         self.range = cfg.range
         self.voxel_size = cfg.voxel_size
@@ -61,7 +79,32 @@ class Voxelization(object):
             max_voxels=self.max_voxel_num,
         )
 
-    def __call__(self, res, info):
+    def __call__(
+        self,
+        res: Dict[str,Any],
+        info: Dict[str,Any]
+    ) -> Tuple[ Dict[str,Any], Dict[str,Any] ]:
+        """
+            Given a point cloud of shape (N, 5), e.g. N=277783,
+            add 3 copies of it, mirrored along the x-dim, then mirrored
+            along y-dim, and then mirrored along both the x- and y-dim.
+
+            These are added to the res['lidar'] dictionary
+
+        Args:
+            res: dictionary with keys
+                'lidar', 'metadata', 'calib', 'cam', 'mode', 'type'
+            
+                res['lidar'] is also a dictionary, with keys
+                    'type', 'points', 'nsweeps', 'annotations', 'times', 'combined'
+
+            info: dictionary with keys
+                'lidar_path', 'cam_front_path', 'cam_intrinsic', 'token',
+                'sweeps', 'ref_from_car', 'car_from_global', 'timestamp',
+                'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
+        
+                info['gt_boxes'] has a shape (N, 9), e.g. N=37
+        """
         # [0, -40, -3, 70.4, 40, 1]
         voxel_size = self.voxel_generator.voxel_size
         pc_range = self.voxel_generator.point_cloud_range

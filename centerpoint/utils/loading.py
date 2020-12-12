@@ -1,12 +1,11 @@
 
 
-import numpy as np
 import os.path as osp
 from copy import deepcopy
-
 from pathlib import Path
+from typing import Any, Dict, Tuple
 
-
+import numpy as np
 
 def read_file(path, tries=2, num_point_feature=4):
     points = None
@@ -25,10 +24,17 @@ def read_file(path, tries=2, num_point_feature=4):
     return points
 
 
-def remove_close(points, radius: float) -> None:
+def remove_close(points: np.ndarray, radius: float) -> np.ndarray:
     """
     Removes point too close within a certain radius from origin.
-    :param radius: Radius below which points are removed.
+
+    Args:
+        points: array of shape (4,N), e.g where N=34720
+        radius: distance of ball, e.g. 1 meter, representing
+            Radius below which points are removed.
+
+    Returns:
+        points: array of shape (4,M), where M < N, e.g. M=27007
     """
     x_filt = np.abs(points[0, :]) < radius
     y_filt = np.abs(points[1, :]) < radius
@@ -37,7 +43,15 @@ def remove_close(points, radius: float) -> None:
     return points
 
 
-def read_sweep(sweep):
+def read_sweep(sweep: Dict[str,Any]) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Args:
+        sweep: dictionary with keys "lidar_path", "transform_matrix", "time_lag"
+    
+    Returns:
+        points_sweep: (N,4) array, e.g. N=27007
+        curr_times:  (N,1) array
+    """
     min_distance = 1.0
     points_sweep = read_file(str(sweep["lidar_path"])).T
     points_sweep = remove_close(points_sweep, min_distance)
@@ -52,14 +66,30 @@ def read_sweep(sweep):
     return points_sweep.T, curr_times.T
 
 
-
-
 class LoadPointCloudAnnotations(object):
     def __init__(self, with_bbox=True, **kwargs):
         pass
 
-    def __call__(self, res, info):
-        """ """
+    def __call__(
+        self,
+        res: Dict[str,Any],
+        info: Dict[str,Any]
+    ) -> Tuple[ Dict[str,Any], Dict[str,Any] ]:
+        """
+        Args:
+            res: dictionary with keys
+                'lidar', 'metadata', 'calib', 'cam', 'mode', 'type'
+            
+                res['lidar'] is also a dictionary, with keys
+                    'type', 'points', 'nsweeps', 'annotations', 'times', 'combined'
+
+            info: dictionary with keys
+                'lidar_path', 'cam_front_path', 'cam_intrinsic', 'token',
+                'sweeps', 'ref_from_car', 'car_from_global', 'timestamp',
+                'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
+        
+                info['gt_boxes'] has a shape (N, 9), e.g. N=37
+        """
         if res["type"] in ["NuScenesDataset"] and "gt_boxes" in info:
             res["lidar"]["annotations"] = {
                 "boxes": info["gt_boxes"].astype(np.float32),
@@ -86,8 +116,20 @@ class LoadPointCloudFromFile(object):
         self.random_select = kwargs.get("random_select", False)
         self.npoints = kwargs.get("npoints", 16834)
 
-    def __call__(self, res, info):
-
+    def __call__(
+        self,
+        res: Dict[str,Any],
+        info: Dict[str,Any]
+    ) -> Tuple[ Dict[str,Any], Dict[str,Any] ]:
+        """
+        Args:
+            res: dictionary with keys
+                'lidar', 'metadata', 'calib', 'cam', 'mode', 'type'
+            info: dictionary with keys
+                'lidar_path', 'cam_front_path', 'cam_intrinsic', 'token',
+                'sweeps', 'ref_from_car', 'car_from_global', 'timestamp',
+                'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
+        """
         res["type"] = self.type
 
         if self.type == "NuScenesDataset":
@@ -95,6 +137,7 @@ class LoadPointCloudFromFile(object):
             nsweeps = res["lidar"]["nsweeps"]
 
             lidar_path = Path(info["lidar_path"])
+            # load (34720, 4) point cloud
             points = read_file(str(lidar_path))
 
             sweep_points_list = [points]
@@ -112,6 +155,7 @@ class LoadPointCloudFromFile(object):
                 sweep_points_list.append(points_sweep)
                 sweep_times_list.append(times_sweep)
 
+            # concat length-10 list, e.g. get (277783, 4) array
             points = np.concatenate(sweep_points_list, axis=0)
             times = np.concatenate(sweep_times_list, axis=0).astype(points.dtype)
 
