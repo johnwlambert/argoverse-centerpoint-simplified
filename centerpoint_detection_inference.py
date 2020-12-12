@@ -294,6 +294,7 @@ def build_dataset(cfg, default_args=None):
                 cfg = SimpleNamespace(**{
                     'target_assigner': SimpleNamespace(**{
                         'tasks': [
+                            # per CBGS methodology
                             SimpleNamespace(**{'num_class': 1, 'class_names': ['car']}),
                             SimpleNamespace(**{'num_class': 2, 'class_names': ['truck', 'construction_vehicle']}),
                             SimpleNamespace(**{'num_class': 2, 'class_names': ['bus', 'trailer']}),
@@ -336,7 +337,7 @@ def build_dataset(cfg, default_args=None):
     )
 
     pdb.set_trace()
-    example = dataset[0]
+    example = dataset[1]
 
 
     return dataset
