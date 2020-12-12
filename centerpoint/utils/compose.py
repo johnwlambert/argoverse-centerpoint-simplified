@@ -13,8 +13,7 @@ class Compose(object):
 
     def __call__(self, res, info):
         """ """
-        import pdb
-        pdb.set_trace()
+
         for t in self.transforms:
             res, info = t(res, info)
             if res is None:
