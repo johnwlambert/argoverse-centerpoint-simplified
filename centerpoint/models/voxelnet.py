@@ -1,4 +1,5 @@
 
+from typing import Any, Dict
 
 from centerpoint.models.single_stage import SingleStageDetector
 
