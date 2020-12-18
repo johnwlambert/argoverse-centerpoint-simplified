@@ -25,6 +25,9 @@ try:
 except:
     print("nuScenes devkit not Found!")
 
+from argoverse.utils.se3 import SE3
+from argoverse.utils.transform import quat2rotmat
+
 
 """
 {
@@ -54,6 +57,31 @@ except:
     ]},
 """
 
+general_to_detection = {
+    "human.pedestrian.adult": "pedestrian",
+    "human.pedestrian.child": "pedestrian",
+    "human.pedestrian.wheelchair": "ignore",
+    "human.pedestrian.stroller": "ignore",
+    "human.pedestrian.personal_mobility": "ignore",
+    "human.pedestrian.police_officer": "pedestrian",
+    "human.pedestrian.construction_worker": "pedestrian",
+    "animal": "ignore",
+    "vehicle.car": "car",
+    "vehicle.motorcycle": "motorcycle",
+    "vehicle.bicycle": "bicycle",
+    "vehicle.bus.bendy": "bus",
+    "vehicle.bus.rigid": "bus",
+    "vehicle.truck": "truck",
+    "vehicle.construction": "construction_vehicle",
+    "vehicle.emergency.ambulance": "ignore",
+    "vehicle.emergency.police": "ignore",
+    "vehicle.trailer": "trailer",
+    "movable_object.barrier": "barrier",
+    "movable_object.trafficcone": "traffic_cone",
+    "movable_object.pushable_pullable": "ignore",
+    "movable_object.debris": "ignore",
+    "static_object.bicycle_rack": "ignore",
+}
 
 
 def transform_matrix(
@@ -82,13 +110,105 @@ def transform_matrix(
     return tm
 
 
+
+def rotmat2quat(R: np.ndarray) -> np.ndarray:
+    """  """
+    q_scipy =  Rotation.from_matrix(R).as_quat()
+    return quat_scipy2argo(q_scipy)
+
+
+def quat_scipy2argo(q_scipy: np.ndarray) -> np.ndarray:
+    """Re-order Argoverse's scalar-first [w,x,y,z] quaternion order to Scipy's scalar-last [x,y,z,w]"""
+    x, y, z, w = q_scipy
+    q_argo = np.array([w, x, y, z])
+    return q_argo
+
+
+
+def transform_city_box_to_lidar_frame_old(box: Box, pose_record: Dict[str,Any], cs_record: Dict[str,Any]) -> Box:
+    """
+    """
+    # Move box to ego vehicle coord system
+    box.translate(-np.array(pose_record["translation"]))
+    box.rotate(Quaternion(pose_record["rotation"]).inverse)
+
+    #  Move box to sensor coord system
+    box.translate(-np.array(cs_record["translation"]))
+    box.rotate(Quaternion(cs_record["rotation"]).inverse)
+
+    return box
+
+
+def transform_city_box_to_lidar_frame(box: Box, pose_record: Dict[str,Any], cs_record: Dict[str,Any]) -> Box:
+    """ box in city frame """
+    city_SE3_egovehicle = SE3(
+        rotation=quat2rotmat(pose_record["rotation"]),
+        translation=np.array(pose_record["translation"])
+    )
+    egovehicle_SE3_city = city_SE3_egovehicle.inverse()
+
+    egovehicle_SE3_lidar = SE3(
+        rotation=quat2rotmat(pose_record["rotation"]),
+        translation=np.array(pose_record["translation"])
+    )
+    egovehicle_SE3_city = city_SE3_egovehicle.inverse()
+
+    box.center = egovehicle_SE3_city.transform_point_cloud(box.center.reshape(1,3)).squeeze()
+    box.orientation = rotmat2quat(egovehicle_SE3_city.rotation @ quat2rotmat(box.orientation))
+    box.velocity = egovehicle_SE3_city.rotation @ box.velocity
+
+    box.center = lidar_SE3_egovehicle.transform_point_cloud(box.center.reshape(1,3)).squeeze()
+    box.orientation = rotmat2quat(lidar_SE3_egovehicle.rotation @ quat2rotmat(box.orientation))
+    box.velocity = lidar_SE3_egovehicle.rotation @ box.velocity
+
+    return lidar_box
+
+
+def test_transform_city_box_to_lidar_frame():
+    """ """
+    # boxes[1]
+
+    pose_record = {
+        'token': '3388933b59444c5db71fade0bbfef470',
+        'timestamp': 1531883530449377,
+        'rotation': [-0.7495886280607293, -0.0077695335695504636, 0.00829759813869316, -0.6618063711504101],
+        'translation': [1010.1328353833223, 610.8111652918716, 0.0]
+    }
+    cs_record = {
+        'token': '7a0cd258d096410eb68251b4b87febf5',
+        'sensor_token': 'dc8b396651c05aedbb9cdaae573bb567',
+        'translation': [0.943713, 0.0, 1.84023],
+        'rotation': [0.7077955119163518, -0.006492242056004365, 0.010646214713995808, -0.7063073142877817],
+        'camera_intrinsic': []
+    }
+
+    city_box = Box(
+        center = array([9.94381e+02, 6.09330e+02, 6.67000e-01]),
+        orientation = Quaternion(-0.09426469466835254, 0.0, 0.0, 0.9955471698212407),
+        size = array([0.315, 0.338, 0.712])),
+
+
+    lidar_box = Box(
+        center = array([-15.44939123,  -4.28768163,  -1.30136452]),
+        orientation = Quaternion(0.15480463394047833, 0.0033357299433613465, 0.00023897082747060053, -0.9879394420252907),
+        size = array([0.315, 0.338, 0.712])
+    )
+
+
 def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] = None):
     """
     Returns the data path as well as all annotations related to that sample_data.
     Note that the boxes are transformed into the current sensor's coordinate frame.
-    :param sample_data_token: Sample_data token.
-    :param selected_anntokens: If provided only return the selected annotation.
-    :return: (data_path, boxes, camera_intrinsic <np.array: 3, 3>)
+
+    Args:
+        nusc
+        sample_data_token: token for "sample" LIDAR_TOP measurement
+        selected_anntokens: If provided only return the selected annotation.
+
+    Returns:
+        data_path: path to LIDAR_TOP file
+        boxes
+        camera_intrinsic <np.array: 3, 3>)
     """
 
     # Retrieve sensor & pose records
@@ -116,15 +236,8 @@ def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] 
     box_list = []
     for box in boxes:
 
-        # Move box to ego vehicle coord system
-        box.translate(-np.array(pose_record["translation"]))
-        box.rotate(Quaternion(pose_record["rotation"]).inverse)
-
-        #  Move box to sensor coord system
-        box.translate(-np.array(cs_record["translation"]))
-        box.rotate(Quaternion(cs_record["rotation"]).inverse)
-
-        box_list.append(box)
+        lidar_box = transform_city_box_to_lidar_frame(box, pose_record, cs_record)
+        box_list.append(lidar_box)
 
     return data_path, box_list, cam_intrinsic
 
@@ -187,16 +300,19 @@ def _fill_trainval_infos(
         ref_cam_path, _, ref_cam_intrinsic = nusc.get_sample_data(ref_cam_front_token)
 
         # Homogeneous transform from ego car frame to reference frame
-        ego_SE3_lidar = SE3(rotation=quat2rotmat(ref_cs_rec["rotation"]),translation=np.array(ref_cs_rec["translation"]))
+        ego_SE3_lidar = SE3(
+            rotation=quat2rotmat(ref_cs_rec["rotation"]),
+            translation=np.array(ref_cs_rec["translation"]))
         lidar_SE3_ego = ego_SE3_lidar.inverse()
         ref_from_car = lidar_SE3_ego.transform_matrix
 
         # Homogeneous transformation matrix from global to _current_ ego car frame
-        car_from_global = transform_matrix(
-            ref_pose_rec["translation"],
-            Quaternion(ref_pose_rec["rotation"]),
-            inverse=True,
+        city_SE3_egovehicle = SE3(
+            rotation=quat2rotmat(ref_pose_rec["rotation"]),
+            translation=np.array(ref_pose_rec["translation"])
         )
+        egovehicle_SE3_city = city_SE3_egovehicle.inverse()
+        car_from_global = egovehicle_SE3_city.transform_matrix
 
         info = {
             "lidar_path": ref_lidar_path,
