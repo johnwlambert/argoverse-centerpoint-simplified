@@ -1343,7 +1343,7 @@ class CenterHead(nn.Module):
         rets = []
         metas = []
 
-        double_flip = test_cfg.get('double_flip', False)
+        double_flip = test_cfg.double_flip # False)
 
         post_center_range = test_cfg.post_center_limit_range
         if len(post_center_range) > 0:
@@ -1475,7 +1475,7 @@ class CenterHead(nn.Module):
 
             metas.append(meta_list)
             
-            if test_cfg.get('max_pool_nms', False) or test_cfg.get('circle_nms', False):
+            if test_cfg.max_pool_nms or test_cfg.circle_nms:
                 rets.append(temp)
                 continue
 
