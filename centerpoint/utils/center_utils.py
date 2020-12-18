@@ -289,17 +289,39 @@ def _topk(scores, K=40):
 
     return topk_score, topk_inds, topk_clses, topk_ys, topk_xs
 
-def ddd_decode(heat, rots, rotc, hei, dim, dir_preds, vel, direction_offset=0, reg=None, \
-              post_center_range=None, K=100, score_threshold=None, cfg=None, raw_rot=False, task_id=-1):
-
-    # print(heat.shape, rots.shape, hei.shape, dim.shape)
+def ddd_decode(
+    heat: torch.Tensor,
+    rots: torch.Tensor,
+    rotc: torch.Tensor,
+    hei: torch.Tensor,
+    dim: torch.Tensor,
+    dir_preds,
+    vel: torch.Tensor,
+    direction_offset: Optional[float] = 0,
+    reg: Optional[torch.Tensor] = None,
+    post_center_range: Optional[torch.Tensor] = None,
+    K: int = 100,
+    score_threshold: Optional[float] = None,
+    cfg=None,
+    raw_rot: bool = False,
+    task_id: int = -1
+):
+    """
+    Args:
+        heat: shape [1, 1, 180, 180]
+        rots: shape [1, 1, 180, 180]
+        rotc: shape [1, 1, 180, 180]
+        hei: shape [1, 1, 180, 180]
+        dim: shape [1, 3, 180, 180]
+        vel: shape [1, 2, 180, 180]
+    """
     batch, cat, _, _ = heat.size()
     # heat = torch.sigmoid(heat)
     # perform nms on heatmaps
 
     # TODO: Add Comments to explain this 
-    maxpool = cfg.get('max_pool_nms', False) or (cfg.get('circle_nms', False) and (cfg.min_radius[task_id] == -1))
-    use_circle_nms = cfg.get('circle_nms', False) and (cfg.min_radius[task_id] != -1) 
+    maxpool = cfg.max_pool_nms or (cfg.circle_nms and (cfg.min_radius[task_id] == -1))
+    use_circle_nms = cfg.circle_nms and (cfg.min_radius[task_id] != -1) 
 
     if maxpool:
       heat = _nms(heat)
