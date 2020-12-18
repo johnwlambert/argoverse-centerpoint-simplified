@@ -320,8 +320,8 @@ def ddd_decode(
     # perform nms on heatmaps
 
     # TODO: Add Comments to explain this 
-    maxpool = cfg.max_pool_nms or (cfg.circle_nms and (cfg.min_radius[task_id] == -1))
-    use_circle_nms = cfg.circle_nms and (cfg.min_radius[task_id] != -1) 
+    maxpool = False # cfg.max_pool_nms or (cfg.circle_nms and (cfg.min_radius[task_id] == -1))
+    use_circle_nms = False # cfg.circle_nms and (cfg.min_radius[task_id] != -1)
 
     if maxpool:
       heat = _nms(heat)
