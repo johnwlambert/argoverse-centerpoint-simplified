@@ -5,12 +5,14 @@
 # Modified by Xingyi Zhou
 # ------------------------------------------------------------------------------
 
-
-import numpy as np
-import cv2
 import random
+from typing import Optional
+
+import cv2
+import numpy as np
 import torch
 from torch import nn
+
 from centerpoint.utils.circle_nms_jit import circle_nms
 
 def flip(img):
