@@ -27,7 +27,7 @@ import six
 import torch
 import yaml
 from argoverse.utils.json_utils import read_json_file, save_json_dict
-from argoverse.utils.pkl_utils import load_pkl_dictionary
+from argoverse.utils.pkl_utils import load_pkl_dictionary, save_pkl_dictionary
 
 
 # from det3d import __version__, torchie
@@ -426,6 +426,16 @@ def main():
                 model, data_batch, train_mode=False, local_rank=args.local_rank,
             )
         for output in outputs:
+            # `output` is a dictionary with keys
+            # dict_keys(['box3d_lidar', 'scores', 'label_preds', 'metadata'])
+            # box3d_lidar is a tensor of shape [217, 9]
+            # scores is a tensor of shape [217]
+            # label_preds is a tensor of shape [217]
+            # metadata has {
+            #     'image_prefix': PosixPath('data/nuScenes/v1.0-test'),
+            #     'num_point_features': 5,
+            #     'token': '3c61eda50f694585bac0614e4660eca1'
+            #    }
             token = output["metadata"]["token"]
             for k, v in output.items():
                 if k not in ["metadata"]:
@@ -436,7 +446,7 @@ def main():
             # if args.local_rank == 0:
             #     prog_bar.update()
 
-    all_predictions = all_gather(detections)
+    #all_predictions = all_gather(detections)
 
     print("\n Total time per frame: ", (time_end -  time_start) / (end - start))
 
@@ -450,9 +460,10 @@ def main():
     if not os.path.exists(args.work_dir):
         os.makedirs(args.work_dir)
 
-    save_pred(predictions, args.work_dir)
+    
     pkl_fpath = os.path.join(args.work_dir, 'prediction.pkl')
-    predictions = load_pkl_dictionary()
+    save_pkl_dictionary(pkl_fpath, predictions)
+    predictions = load_pkl_dictionary(pkl_fpath)
     
     result_dict, _ = dataset.evaluation(copy.deepcopy(predictions), output_dir=args.work_dir, testset=args.testset)
 
