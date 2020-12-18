@@ -4,6 +4,7 @@ import copy
 import logging
 from collections import defaultdict
 from enum import Enum
+from typing import Any, Dict, List
 
 import numpy as np
 import torch
@@ -1184,8 +1185,8 @@ class CenterHead(nn.Module):
         in_channels=[128,],
         norm_cfg=None,
         tasks=[],
-        dataset='nuscenes',
-        weight=0.25,
+        dataset: str = 'nuscenes',
+        weight: float = 0.25,
         code_weights=[],
         common_heads=dict(),
         encode_rad_error_by_sin=False,
@@ -1196,8 +1197,8 @@ class CenterHead(nn.Module):
         logger=None,
         init_bias=-2.19,
         share_conv_channel=64,
-        smooth_loss=False,
-        no_log=False,
+        smooth_loss: bool = False,
+        no_log: bool = False,
         num_hm_conv=2,
         dcn_head=False,
         bn=True
@@ -1328,8 +1329,15 @@ class CenterHead(nn.Module):
         return rets_merged
 
 
-    def predict(self, example, preds_dicts, test_cfg, **kwargs):
+    def predict(self, example: Dict[str,Any], preds_dicts: List[Dict[str,torch.Tensor]], test_cfg, **kwargs):
         """decode, nms, then return the detection result. Additionaly support double flip testing 
+        
+        Args:
+            example: dictionary with keys
+                 dict_keys(['metadata', 'points', 'voxels', 'shape', 'num_points', 'num_voxels', 'coordinates', 'annos'])
+            preds_dicts: list of dictionaries, each with keys
+                 dict_keys(['reg', 'height', 'dim', 'rot', 'vel', 'hm'])
+            
         """
         # get loss info
         rets = []
@@ -1410,7 +1418,6 @@ class CenterHead(nn.Module):
                 # sin(pi-theta) = sin(theta) cos(pi-theta) = -cos(theta)
                 # batch_rots[:, 1] the same
                 batch_rotc[:, 1] = -batch_rotc[:, 1]
-
 
                 # then xflip x = -x theta = 2pi - theta
                 # sin(2pi - theta) = -sin(theta) cos(2pi - theta) = cos(theta)
