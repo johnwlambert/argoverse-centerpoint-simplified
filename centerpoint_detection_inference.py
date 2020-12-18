@@ -443,10 +443,9 @@ def main():
             detections.update(
                 {token: output,}
             )
-            # if args.local_rank == 0:
-            #     prog_bar.update()
+        break
 
-    #all_predictions = all_gather(detections)
+    all_predictions = detections
 
     print("\n Total time per frame: ", (time_end -  time_start) / (end - start))
 
