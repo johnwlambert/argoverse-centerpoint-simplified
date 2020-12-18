@@ -452,9 +452,7 @@ def main():
     if args.local_rank != 0:
         return
 
-    predictions = {}
-    for p in all_predictions:
-        predictions.update(p)
+    predictions = all_predictions
 
     if not os.path.exists(args.work_dir):
         os.makedirs(args.work_dir)
