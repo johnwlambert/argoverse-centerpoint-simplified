@@ -12,7 +12,9 @@ from torch import nn
 from torch.nn import functional as F
 
 
-import centerpoint.utils.box_torch_ops
+
+
+import centerpoint.utils.box_torch_ops as box_torch_ops
 from centerpoint.utils.sequential_utils import Sequential
 from centerpoint.utils.centernet_loss import FocalLoss, SmoothRegLoss, RegLoss
 from centerpoint.utils.center_utils import ddd_decode, _transpose_and_gather_feat
