@@ -21,3 +21,8 @@ RuntimeError: /nethome/jlambert30/spconv/src/spconv/indice.cu 274
 cuda execution failed with error 98 invalid device function
 prepareSubMGridKernel failed
 https://github.com/traveller59/spconv/issues/34
+
+## Deformable Convolution 
+
+Added here:
+https://github.com/pytorch/vision/pull/1586/files
