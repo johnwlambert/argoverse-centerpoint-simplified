@@ -1475,7 +1475,7 @@ class CenterHead(nn.Module):
 
             metas.append(meta_list)
             
-            if test_cfg.max_pool_nms or test_cfg.circle_nms:
+            if test_cfg.__dict__.get('max_pool_nms', False) or test_cfg.__dict__.get('circle_nms', False):
                 rets.append(temp)
                 continue
 
