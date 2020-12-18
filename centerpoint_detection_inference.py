@@ -249,7 +249,7 @@ def build_from_cfg(logger, cfg, registry, default_args=None):
         neck=neck,
         bbox_head=bbox_head,
         train_cfg=None,
-        test_cfg=None,
+        test_cfg=SimpleNamespace(**default_args['test_cfg']),
         pretrained=None
     )
     return detector
