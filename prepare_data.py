@@ -12,7 +12,7 @@ from functools import reduce
 
 import numpy as np
 from argoverse.utils.se3 import SE3
-from argoverse.utils.transform import quat2rotmat
+from argoverse.utils.transform import quat2rotmat, quat_argo2scipy
 from tqdm import tqdm
 from pyquaternion import Quaternion
 from scipy.spatial.transform import Rotation
@@ -281,7 +281,8 @@ def _fill_trainval_infos(
     ref_chan = "LIDAR_TOP"  # The radar channel from which we track back n sweeps to aggregate the point cloud.
     chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
 
-    for sample in tqdm(nusc.sample):
+    for sample_idx, sample in enumerate(nusc.sample):
+        print(f'On {sample_idx}/{len(nusc.sample)}')
         """ Manual save info["sweeps"] """
         # Get reference pose and timestamp
 
@@ -353,8 +354,6 @@ def _fill_trainval_infos(
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
         sweeps = []
 
-        pdb.set_trace()
-
         while len(sweeps) < nsweeps - 1:
             # if there are no samples before, just pad with the same sample
             if curr_sd_rec["prev"] == "":
@@ -370,12 +369,11 @@ def _fill_trainval_infos(
                 else:
                     sweeps.append(sweeps[-1])
             else:
-                pdb.set_trace()
+                # accumulate the 9 prior sweeps
                 curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
 
                 # Get past pose
                 current_pose_rec = nusc.get("ego_pose", curr_sd_rec["ego_pose_token"])
-
 
                 city_SE3_egoti = SE3(
                     rotation=quat2rotmat(current_pose_rec["rotation"]),
@@ -396,6 +394,9 @@ def _fill_trainval_infos(
 
                 time_lag = ref_time - 1e-6 * curr_sd_rec["timestamp"]
 
+                if 'n015-2018-08-02-17-16-37' in lidar_path and '948018' in lidar_path:
+                    pdb.set_trace()
+
                 sweep = {
                     "lidar_path": lidar_path,
                     "sample_data_token": curr_sd_rec["token"],
@@ -412,6 +413,7 @@ def _fill_trainval_infos(
             len(info["sweeps"]) == nsweeps - 1
         ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
 
+        # save the annotations if we are looking at train/val log
         if not test:
             annotations = [
                 nusc.get("sample_annotation", token) for token in sample["anns"]
@@ -425,9 +427,11 @@ def _fill_trainval_infos(
                 dtype=bool,
             ).reshape(-1)
 
+            # form N x 3 arrays for 3d location, dim, velocity info
             locs = np.array([b.center for b in ref_boxes]).reshape(-1, 3)
             dims = np.array([b.wlh for b in ref_boxes]).reshape(-1, 3)
             velocity = np.array([b.velocity for b in ref_boxes]).reshape(-1, 3)
+
             rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(
                 -1, 1
             )
@@ -436,7 +440,6 @@ def _fill_trainval_infos(
             gt_boxes = np.concatenate(
                 [locs, dims, velocity[:, :2], -rots - np.pi / 2], axis=1
             )
-            # gt_boxes = np.concatenate([locs, dims, rots], axis=1)
 
             assert len(annotations) == len(gt_boxes) == len(velocity)
 
@@ -471,7 +474,6 @@ def quaternion_yaw(q: Quaternion) -> float:
     :param q: Quaternion of interest.
     :return: Yaw angle in radians.
     """
-
     # Project into xy plane.
     v = np.dot(q.rotation_matrix, np.array([1, 0, 0]))
 
@@ -479,6 +481,27 @@ def quaternion_yaw(q: Quaternion) -> float:
     yaw = np.arctan2(v[1], v[0])
 
     return yaw
+
+
+def quaternion_yaw_scipy(q: Quaternion) -> float:
+    """ """
+    q_argo = q
+    q_scipy = quat_argo2scipy(q_argo)
+    yaw, _, _ = Rotation.from_quat(q_scipy).as_euler('zyx')
+    return yaw
+
+
+def test_quaternion_yaw_scipy():
+    """ """
+    q = Quaternion(-0.10293980572965565, -0.003318673306337732, -0.00041304817784475515, 0.994681965351252)
+
+    old_yaw = quaternion_yaw(copy.deepcopy(q))
+    scipy_yaw = quaternion_yaw_scipy(copy.deepcopy(q))
+
+    yaw_gt = -2.9353469986645324
+    assert np.isclose(old_yaw, yaw_gt)
+    assert np.isclose(scipy_yaw, yaw_gt)
+
 
 
 def _get_available_scenes(nusc):
@@ -599,9 +622,13 @@ def create_nuscenes_infos(
 if __name__ == "__main__":
     """ """
     NUSCENES_TRAINVAL_DATASET_ROOT = "data/nuScenes"
+    #version = "v1.0-trainval"
+    version = "v1.0-test"
     create_nuscenes_infos(
-        root_path=NUSCENES_TRAINVAL_DATASET_ROOT, version="v1.0-trainval", nsweeps=10
+        root_path=NUSCENES_TRAINVAL_DATASET_ROOT, version=version, nsweeps=10
     )
     # test_rotmat2quat()
     # test_transform_city_box_to_lidar_frame()
-    
+    # test_quaternion_yaw_scipy()
+
+
