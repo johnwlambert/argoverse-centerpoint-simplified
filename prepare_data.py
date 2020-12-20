@@ -275,8 +275,6 @@ def _fill_trainval_infos(
     """ """
     from nuscenes.utils.geometry_utils import transform_matrix
 
-    pdb.set_trace()
-
     train_nusc_infos = []
     val_nusc_infos = []
 
@@ -327,19 +325,18 @@ def _fill_trainval_infos(
         ref_cam_path, _, ref_cam_intrinsic = nusc.get_sample_data(ref_cam_front_token)
 
         # Homogeneous transform from ego car frame to reference frame
-        ego_SE3_lidar = SE3(
+        egot0_SE3_lidart0 = SE3(
             rotation=quat2rotmat(ref_cs_rec["rotation"]),
-            translation=np.array(ref_cs_rec["translation"]))
-        lidar_SE3_ego = ego_SE3_lidar.inverse()
-        ref_from_car = lidar_SE3_ego.transform_matrix
+            translation=np.array(ref_cs_rec["translation"])
+        )
+        lidart0_SE3_egot0 = egot0_SE3_lidart0.inverse()
 
         # Homogeneous transformation matrix from global to _current_ ego car frame
-        city_SE3_egovehicle = SE3(
+        city_SE3_egot0 = SE3(
             rotation=quat2rotmat(ref_pose_rec["rotation"]),
             translation=np.array(ref_pose_rec["translation"])
         )
-        egovehicle_SE3_city = city_SE3_egovehicle.inverse()
-        car_from_global = egovehicle_SE3_city.transform_matrix
+        egot0_SE3_city = city_SE3_egot0.inverse()
 
         info = {
             "lidar_path": ref_lidar_path,
@@ -347,15 +344,19 @@ def _fill_trainval_infos(
             "cam_intrinsic": ref_cam_intrinsic,
             "token": sample["token"],
             "sweeps": [],
-            "ref_from_car": ref_from_car,
-            "car_from_global": car_from_global,
+            "ref_from_car": lidart0_SE3_egot0.transform_matrix,
+            "car_from_global": egot0_SE3_city.transform_matrix,
             "timestamp": ref_time,
         }
 
         sample_data_token = sample["data"][chan]
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
         sweeps = []
+
+        pdb.set_trace()
+
         while len(sweeps) < nsweeps - 1:
+            # if there are no samples before, just pad with the same sample
             if curr_sd_rec["prev"] == "":
                 if len(sweeps) == 0:
                     sweep = {
@@ -369,31 +370,28 @@ def _fill_trainval_infos(
                 else:
                     sweeps.append(sweeps[-1])
             else:
+                pdb.set_trace()
                 curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
 
                 # Get past pose
                 current_pose_rec = nusc.get("ego_pose", curr_sd_rec["ego_pose_token"])
-                global_from_car = transform_matrix(
-                    current_pose_rec["translation"],
-                    Quaternion(current_pose_rec["rotation"]),
-                    inverse=False,
+
+
+                city_SE3_egoti = SE3(
+                    rotation=quat2rotmat(current_pose_rec["rotation"]),
+                    translation=np.array(current_pose_rec["translation"])
                 )
 
                 # Homogeneous transformation matrix from sensor coordinate frame to ego car frame.
                 current_cs_rec = nusc.get(
                     "calibrated_sensor", curr_sd_rec["calibrated_sensor_token"]
                 )
-                car_from_current = transform_matrix(
-                    current_cs_rec["translation"],
-                    Quaternion(current_cs_rec["rotation"]),
-                    inverse=False,
+                egoti_SE3_lidarti = SE3(
+                    rotation=quat2rotmat(current_cs_rec["rotation"]),
+                    translation=np.array(current_cs_rec["translation"])
                 )
 
-                tm = reduce(
-                    np.dot,
-                    [ref_from_car, car_from_global, global_from_car, car_from_current],
-                )
-
+                lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
                 lidar_path = nusc.get_sample_data_path(curr_sd_rec["token"])
 
                 time_lag = ref_time - 1e-6 * curr_sd_rec["timestamp"]
@@ -401,9 +399,9 @@ def _fill_trainval_infos(
                 sweep = {
                     "lidar_path": lidar_path,
                     "sample_data_token": curr_sd_rec["token"],
-                    "transform_matrix": tm,
-                    "global_from_car": global_from_car,
-                    "car_from_current": car_from_current,
+                    "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
+                    "global_from_car": city_SE3_egoti.transform_matrix,
+                    "car_from_current": egoti_SE3_lidarti.transform_matrix,
                     "time_lag": time_lag,
                 }
                 sweeps.append(sweep)
@@ -429,7 +427,6 @@ def _fill_trainval_infos(
 
             locs = np.array([b.center for b in ref_boxes]).reshape(-1, 3)
             dims = np.array([b.wlh for b in ref_boxes]).reshape(-1, 3)
-            # rots = np.array([b.orientation.yaw_pitch_roll[0] for b in ref_boxes]).reshape(-1, 1)
             velocity = np.array([b.velocity for b in ref_boxes]).reshape(-1, 3)
             rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(
                 -1, 1
@@ -608,6 +605,3 @@ if __name__ == "__main__":
     # test_rotmat2quat()
     # test_transform_city_box_to_lidar_frame()
     
-
-
-
