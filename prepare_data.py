@@ -1,18 +1,21 @@
 
 
-
-import numpy as np
+import copy
 import os.path as osp
 import pdb
 import pickle
 import random
-
 from pathlib import Path
-from functools import reduce
-from typing import Tuple, List
+from typing import Any, Dict, List, Tuple
 
+from functools import reduce
+
+import numpy as np
+from argoverse.utils.se3 import SE3
+from argoverse.utils.transform import quat2rotmat
 from tqdm import tqdm
 from pyquaternion import Quaternion
+from scipy.spatial.transform import Rotation
 
 try:
     from nuscenes import NuScenes
@@ -25,8 +28,7 @@ try:
 except:
     print("nuScenes devkit not Found!")
 
-from argoverse.utils.se3 import SE3
-from argoverse.utils.transform import quat2rotmat
+
 
 
 """
@@ -124,6 +126,13 @@ def quat_scipy2argo(q_scipy: np.ndarray) -> np.ndarray:
     return q_argo
 
 
+def test_rotmat2quat():
+    """ """
+    R = np.eye(3)
+    q = rotmat2quat(R)
+    R_result = quat2rotmat(q)
+    assert np.allclose(R, R_result)
+
 
 def transform_city_box_to_lidar_frame_old(box: Box, pose_record: Dict[str,Any], cs_record: Dict[str,Any]) -> Box:
     """
@@ -140,7 +149,13 @@ def transform_city_box_to_lidar_frame_old(box: Box, pose_record: Dict[str,Any], 
 
 
 def transform_city_box_to_lidar_frame(box: Box, pose_record: Dict[str,Any], cs_record: Dict[str,Any]) -> Box:
-    """ box in city frame """
+    """
+    Args:
+        box in city frame
+    
+    Returns:
+        box in egovehicle frame
+    """
     city_SE3_egovehicle = SE3(
         rotation=quat2rotmat(pose_record["rotation"]),
         translation=np.array(pose_record["translation"])
@@ -148,23 +163,27 @@ def transform_city_box_to_lidar_frame(box: Box, pose_record: Dict[str,Any], cs_r
     egovehicle_SE3_city = city_SE3_egovehicle.inverse()
 
     egovehicle_SE3_lidar = SE3(
-        rotation=quat2rotmat(pose_record["rotation"]),
-        translation=np.array(pose_record["translation"])
+        rotation=quat2rotmat(cs_record["rotation"]),
+        translation=np.array(cs_record["translation"])
     )
-    egovehicle_SE3_city = city_SE3_egovehicle.inverse()
+    lidar_SE3_egovehicle = egovehicle_SE3_lidar.inverse()
 
     box.center = egovehicle_SE3_city.transform_point_cloud(box.center.reshape(1,3)).squeeze()
-    box.orientation = rotmat2quat(egovehicle_SE3_city.rotation @ quat2rotmat(box.orientation))
+    box.orientation = Quaternion(rotmat2quat(egovehicle_SE3_city.rotation @ quat2rotmat(list(box.orientation))))
     box.velocity = egovehicle_SE3_city.rotation @ box.velocity
 
+    # should become
+    # box.center = array([-3.40565985, 15.44737312,  0.73430395])
+    # box.orientation = Quaternion(-0.5881997166174422, -0.008993043052939156, -0.006952766600972482, -0.8086358127021093)
+
     box.center = lidar_SE3_egovehicle.transform_point_cloud(box.center.reshape(1,3)).squeeze()
-    box.orientation = rotmat2quat(lidar_SE3_egovehicle.rotation @ quat2rotmat(box.orientation))
+    box.orientation = Quaternion(rotmat2quat(lidar_SE3_egovehicle.rotation @ quat2rotmat(list(box.orientation))))
     box.velocity = lidar_SE3_egovehicle.rotation @ box.velocity
 
-    return lidar_box
+    return box
 
 
-def test_transform_city_box_to_lidar_frame():
+def test_transform_city_box_to_lidar_frame() -> None:
     """ """
     # boxes[1]
 
@@ -183,16 +202,24 @@ def test_transform_city_box_to_lidar_frame():
     }
 
     city_box = Box(
-        center = array([9.94381e+02, 6.09330e+02, 6.67000e-01]),
+        center = [9.94381e+02, 6.09330e+02, 6.67000e-01],
         orientation = Quaternion(-0.09426469466835254, 0.0, 0.0, 0.9955471698212407),
-        size = array([0.315, 0.338, 0.712])),
-
-
-    lidar_box = Box(
-        center = array([-15.44939123,  -4.28768163,  -1.30136452]),
-        orientation = Quaternion(0.15480463394047833, 0.0033357299433613465, 0.00023897082747060053, -0.9879394420252907),
-        size = array([0.315, 0.338, 0.712])
+        size = [0.315, 0.338, 0.712]
     )
+
+    lidar_box_gt = Box(
+        center = [-15.44939123,  -4.28768163,  -1.30136452],
+        orientation = Quaternion(0.15480463394047833, 0.0033357299433613465, 0.00023897082747060053, -0.9879394420252907),
+        size = [0.315, 0.338, 0.712]
+    )
+
+    lidar_box1 = transform_city_box_to_lidar_frame_old( copy.deepcopy(city_box), copy.deepcopy(pose_record), copy.deepcopy(cs_record) )
+    assert lidar_box1 == lidar_box_gt
+
+    lidar_box2 = transform_city_box_to_lidar_frame( copy.deepcopy(city_box), copy.deepcopy(pose_record), copy.deepcopy(cs_record) )
+    assert np.allclose(lidar_box2.center, lidar_box_gt.center)
+    assert np.allclose(quat2rotmat(list(lidar_box2.orientation)), quat2rotmat(list(lidar_box_gt.orientation)))
+
 
 
 def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] = None):
@@ -578,3 +605,9 @@ if __name__ == "__main__":
     create_nuscenes_infos(
         root_path=NUSCENES_TRAINVAL_DATASET_ROOT, version="v1.0-trainval", nsweeps=10
     )
+    # test_rotmat2quat()
+    # test_transform_city_box_to_lidar_frame()
+    
+
+
+
