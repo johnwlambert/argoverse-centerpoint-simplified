@@ -53,7 +53,7 @@ array([[ 0.95, -1.  ,  1.83],
        [ 0.97, -0.01,  2.84]])
 ```
 <p align="center">
-  <img src="https://www.nuscenes.org/public/images/data.png" height="215">
-  <img src="https://user-images.githubusercontent.com/16724970/102704589-60dcde00-424b-11eb-8997-aff36f705404.jpg" height="215">
+  <img src="https://www.nuscenes.org/public/images/data.png" height="400">
+  <img src="https://user-images.githubusercontent.com/16724970/102704589-60dcde00-424b-11eb-8997-aff36f705404.jpg" height="400">
 </p>
 
