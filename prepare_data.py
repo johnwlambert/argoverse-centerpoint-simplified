@@ -29,8 +29,6 @@ except:
     print("nuScenes devkit not Found!")
 
 
-
-
 """
 {
 'token': '2a1710d55ac747339eae4502565b956b',
@@ -354,6 +352,8 @@ def _fill_trainval_infos(
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
         sweeps = []
 
+        # should be 9 samples for each 1 sweep
+
         while len(sweeps) < nsweeps - 1:
             # if there are no samples before, just pad with the same sample
             if curr_sd_rec["prev"] == "":
@@ -394,8 +394,17 @@ def _fill_trainval_infos(
 
                 time_lag = ref_time - 1e-6 * curr_sd_rec["timestamp"]
 
-                if 'n015-2018-08-02-17-16-37' in lidar_path and '948018' in lidar_path:
-                    pdb.set_trace()
+                if 'n015-2018-08-02-17-16-37+0800__LIDAR_TOP__1533201470898274' in lidar_path:
+                    # trainval example "transform_matrix"
+                    expected_tm = np.array(
+                        [
+                            [1, 0, 0, 0],
+                            [0, 1, 0, 0.001],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]
+                        ])
+                    assert np.allclose(expected_tm, lidart0_SE3_lidarti.transform_matrix, atol=1e-2)
+
 
                 sweep = {
                     "lidar_path": lidar_path,
@@ -432,9 +441,7 @@ def _fill_trainval_infos(
             dims = np.array([b.wlh for b in ref_boxes]).reshape(-1, 3)
             velocity = np.array([b.velocity for b in ref_boxes]).reshape(-1, 3)
 
-            rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(
-                -1, 1
-            )
+            rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(-1, 1)
             names = np.array([b.name for b in ref_boxes])
             tokens = np.array([b.token for b in ref_boxes])
             gt_boxes = np.concatenate(
