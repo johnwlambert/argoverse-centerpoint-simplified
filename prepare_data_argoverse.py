@@ -24,7 +24,7 @@ except:
 
 
 from argoverse.data_loading.simple_track_dataloader import SimpleArgoverseTrackingDataLoader
-
+from argoverse.utils.calibration import get_calibration_config
 
 """
 {
@@ -106,79 +106,6 @@ def test_rotmat2quat():
 
 
 
-def transform_city_box_to_lidar_frame(box: Box, pose_record: Dict[str,Any], cs_record: Dict[str,Any]) -> Box:
-    """
-    Args:
-        box in city frame
-    
-    Returns:
-        box in egovehicle frame
-    """
-    city_SE3_egovehicle = SE3(
-        rotation=quat2rotmat(pose_record["rotation"]),
-        translation=np.array(pose_record["translation"])
-    )
-    egovehicle_SE3_city = city_SE3_egovehicle.inverse()
-
-    egovehicle_SE3_lidar = SE3(
-        rotation=quat2rotmat(cs_record["rotation"]),
-        translation=np.array(cs_record["translation"])
-    )
-    lidar_SE3_egovehicle = egovehicle_SE3_lidar.inverse()
-
-    box.center = egovehicle_SE3_city.transform_point_cloud(box.center.reshape(1,3)).squeeze()
-    box.orientation = Quaternion(rotmat2quat(egovehicle_SE3_city.rotation @ quat2rotmat(list(box.orientation))))
-    box.velocity = egovehicle_SE3_city.rotation @ box.velocity
-
-    # should become
-    # box.center = array([-3.40565985, 15.44737312,  0.73430395])
-    # box.orientation = Quaternion(-0.5881997166174422, -0.008993043052939156, -0.006952766600972482, -0.8086358127021093)
-
-    box.center = lidar_SE3_egovehicle.transform_point_cloud(box.center.reshape(1,3)).squeeze()
-    box.orientation = Quaternion(rotmat2quat(lidar_SE3_egovehicle.rotation @ quat2rotmat(list(box.orientation))))
-    box.velocity = lidar_SE3_egovehicle.rotation @ box.velocity
-
-    return box
-
-
-def test_transform_city_box_to_lidar_frame() -> None:
-    """ """
-    # boxes[1]
-
-    pose_record = {
-        'token': '3388933b59444c5db71fade0bbfef470',
-        'timestamp': 1531883530449377,
-        'rotation': [-0.7495886280607293, -0.0077695335695504636, 0.00829759813869316, -0.6618063711504101],
-        'translation': [1010.1328353833223, 610.8111652918716, 0.0]
-    }
-    cs_record = {
-        'token': '7a0cd258d096410eb68251b4b87febf5',
-        'sensor_token': 'dc8b396651c05aedbb9cdaae573bb567',
-        'translation': [0.943713, 0.0, 1.84023],
-        'rotation': [0.7077955119163518, -0.006492242056004365, 0.010646214713995808, -0.7063073142877817],
-        'camera_intrinsic': []
-    }
-
-    city_box = Box(
-        center = [9.94381e+02, 6.09330e+02, 6.67000e-01],
-        orientation = Quaternion(-0.09426469466835254, 0.0, 0.0, 0.9955471698212407),
-        size = [0.315, 0.338, 0.712]
-    )
-
-    lidar_box_gt = Box(
-        center = [-15.44939123,  -4.28768163,  -1.30136452],
-        orientation = Quaternion(0.15480463394047833, 0.0033357299433613465, 0.00023897082747060053, -0.9879394420252907),
-        size = [0.315, 0.338, 0.712]
-    )
-
-    lidar_box1 = transform_city_box_to_lidar_frame_old( copy.deepcopy(city_box), copy.deepcopy(pose_record), copy.deepcopy(cs_record) )
-    assert lidar_box1 == lidar_box_gt
-
-    lidar_box2 = transform_city_box_to_lidar_frame( copy.deepcopy(city_box), copy.deepcopy(pose_record), copy.deepcopy(cs_record) )
-    assert np.allclose(lidar_box2.center, lidar_box_gt.center)
-    assert np.allclose(quat2rotmat(list(lidar_box2.orientation)), quat2rotmat(list(lidar_box_gt.orientation)))
-
-
 # equivalent of `general_to_detection` dict
 argoverse_name_to_nuscenes_name = {
     'VEHICLE': 'car',
@@ -195,11 +122,8 @@ argoverse_name_to_nuscenes_name = {
 }
 
 
-def construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0: SE3):
-    """ """
-    pdb.set_trace()
-
-
+def construct_argoverse_boxes_lidarfr(sweep_labels: List[Dict[str,Any]], lidar_SE3_egovehicle: SE3):
+    """ Move egovehicle frame boxes, to live in the LiDAR frame instead"""
     # Make list of Box objects including coord system transforms.
     box_list = []
     for label in sweep_labels:
@@ -217,7 +141,8 @@ def construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0: SE3):
         qy = label['rotation']['y']
         qz = label['rotation']['z']
 
-        centerpoint_classname = argoverse_name_to_nuscenes_name(label['label_class'])
+        argoverse_classname = label['label_class']
+        centerpoint_classname = argoverse_name_to_nuscenes_name[argoverse_classname]
         box = Box(
             center = [x, y, z], # Argoverse and nuScenes use scalar-first
             size = [width, length, height], # wlh
@@ -231,8 +156,10 @@ def construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0: SE3):
         
         # transform box from the egovehicle frame into the LiDAR frame
 
-        lidar_box = transform_city_box_to_lidar_frame(box, pose_record, cs_record)
-        box_list.append(lidar_box)
+        box.center = lidar_SE3_egovehicle.transform_point_cloud(box.center.reshape(1,3)).squeeze()
+        box.orientation = Quaternion(rotmat2quat(lidar_SE3_egovehicle.rotation @ quat2rotmat(list(box.orientation))))
+        box.velocity = lidar_SE3_egovehicle.rotation @ box.velocity
+        box_list.append(box)
 
     return box_list
 
@@ -263,7 +190,9 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
             log_ply_fpaths = dl.get_ordered_log_ply_fpaths(log_id)
 
             log_calib_data = dl.get_log_calibration_data(log_id)
-            log_calib_data['vehicle_SE3_up_lidar_']
+            calibration_config = get_calibration_config(log_calib_data, camera_name='ring_front_center')
+            ref_cam_intrinsic = calibration_config.intrinsic[:3,:3]
+
             egovehicle_SE3_lidar = SE3(
                 rotation=quat2rotmat(log_calib_data['vehicle_SE3_up_lidar_']['rotation']['coefficients']),
                 translation=np.array(log_calib_data['vehicle_SE3_up_lidar_']['translation'])
@@ -272,11 +201,11 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
 
             for sample_idx, ply_fpath in enumerate(log_ply_fpaths):
                 print(f'On {sample_idx}/{len(log_ply_fpaths)}')
-
-                pdb.set_trace()
                 lidar_timestamp = int(Path(ply_fpath).stem.split('_')[-1])
 
                 city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, lidar_timestamp)
+                egot0_SE3_city = city_SE3_egot0.inverse()
+
                 sweep_labels = dl.get_labels_at_lidar_timestamp(log_id, lidar_timestamp)
 
                 # nuscenes timestamps are in microseconds
@@ -287,15 +216,11 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
                 ref_boxes = construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0)
                 pdb.set_trace()
 
-                ref_cam_front_token = sample["data"]["CAM_FRONT"]
-                ref_cam_path, _, ref_cam_intrinsic = nusc.get_sample_data(ref_cam_front_token)
-
-                # Homogeneous transformation matrix from global to _current_ ego car frame
-                city_SE3_egot0 = SE3(
-                    rotation=quat2rotmat(ref_pose_rec["rotation"]),
-                    translation=np.array(ref_pose_rec["translation"])
+                ref_cam_path = dl.get_closest_im_fpath(
+                    log_id,
+                    camera_name='ring_front_center',
+                    lidar_timestamp=lidar_timestamp
                 )
-                egot0_SE3_city = city_SE3_egot0.inverse()
 
                 info = {
                     "lidar_path": ref_lidar_path,
@@ -308,11 +233,8 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
                     "timestamp": ref_time,
                 }
 
-                sample_data_token = sample["data"][chan]
-                curr_sd_rec = nusc.get("sample_data", sample_data_token)
                 sweeps = []
-
-                # should be 9 samples for each 1 sweep
+                # should be 9 sweeps for each 1 sample
 
                 while len(sweeps) < nsweeps - 1:
                     # if there are no samples before, just pad with the same sample
