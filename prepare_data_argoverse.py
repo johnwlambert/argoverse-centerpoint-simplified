@@ -18,13 +18,12 @@ from scipy.spatial.transform import Rotation
 try:
     from nuscenes import NuScenes
     from nuscenes.utils import splits
-    from nuscenes.utils.data_classes import LidarPointCloud
-    from nuscenes.utils.geometry_utils import transform_matrix
     from nuscenes.utils.data_classes import Box
-    from nuscenes.eval.detection.config import config_factory
-    from nuscenes.eval.detection.evaluate import NuScenesEval
 except:
     print("nuScenes devkit not Found!")
+
+
+from argoverse.data_loading.simple_track_dataloader import SimpleArgoverseTrackingDataLoader
 
 
 """
@@ -180,237 +179,255 @@ def test_transform_city_box_to_lidar_frame() -> None:
     assert np.allclose(quat2rotmat(list(lidar_box2.orientation)), quat2rotmat(list(lidar_box_gt.orientation)))
 
 
+# equivalent of `general_to_detection` dict
+argoverse_name_to_nuscenes_name = {
+    'VEHICLE': 'car',
+    'ON_ROAD_OBSTACLE': 'ignore', # or 'traffic_cone' ?
+    'TRAILER': 'trailer',
+    'BUS': 'bus',
+    'LARGE_VEHICLE': 'vehicle', # or 'truck'?
+    'EMERGENCY_VEHICLE': 'ignore',
+    'MOTORCYCLE': 'motorcycle',
+    'BICYCLE': 'bicycle',
+    'PEDESTRIAN': 'pedestrian',
+    'ANIMAL': 'ignore',
+    'UNKNOWN': 'ignore'
+}
 
-def get_sample_data(nusc, sample_data_token: str, selected_anntokens: List[str] = None):
-    """
-    Returns the data path as well as all annotations related to that sample_data.
-    Note that the boxes are transformed into the current sensor's coordinate frame.
 
-    Args:
-        nusc
-        sample_data_token: token for "sample" LIDAR_TOP measurement
-        selected_anntokens: If provided only return the selected annotation.
+def construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0: SE3):
+    """ """
+    pdb.set_trace()
 
-    Returns:
-        data_path: path to LIDAR_TOP file
-        boxes
-        camera_intrinsic <np.array: 3, 3>)
-    """
-
-    # Retrieve sensor & pose records
-    sd_record = nusc.get(table_name="sample_data", token=sample_data_token)
-    cs_record = nusc.get(table_name="calibrated_sensor", token=sd_record["calibrated_sensor_token"])
-    sensor_record = nusc.get(table_name="sensor", token=cs_record["sensor_token"])
-    pose_record = nusc.get(table_name="ego_pose", token=sd_record["ego_pose_token"])
-
-    data_path = nusc.get_sample_data_path(sample_data_token)
-
-    if sensor_record["modality"] == "camera":
-        cam_intrinsic = np.array(cs_record["camera_intrinsic"])
-        imsize = (sd_record["width"], sd_record["height"])
-    else:
-        cam_intrinsic = None
-        imsize = None
-
-    # Retrieve all sample annotations and map to sensor coordinate system.
-    if selected_anntokens is not None:
-        boxes = list(map(nusc.get_box, selected_anntokens))
-    else:
-        boxes = nusc.get_boxes(sample_data_token)
 
     # Make list of Box objects including coord system transforms.
     box_list = []
-    for box in boxes:
+    for label in sweep_labels:
+
+        width = label['width']
+        length = label['length']
+        height = label['height']
+
+        x = label['center']['x']
+        y = label['center']['y']
+        z = label['center']['z']
+
+        qw = label['rotation']['w']
+        qx = label['rotation']['x']
+        qy = label['rotation']['y']
+        qz = label['rotation']['z']
+
+        centerpoint_classname = argoverse_name_to_nuscenes_name(label['label_class'])
+        box = Box(
+            center = [x, y, z], # Argoverse and nuScenes use scalar-first
+            size = [width, length, height], # wlh
+            orientation = Quaternion([qw, qx, qy, qz]),
+            #label= , #: int = np.nan, # IGNORING SCORE FOR NOW
+            #score= , #: float = np.nan, # IGNORING SCORE FOR NOW
+            #velocity= , #: Tuple = (np.nan, np.nan, np.nan), IGNORING VELOCITY FOR NOW
+            name = centerpoint_classname, #: str = None,
+            token = label['track_label_uuid'], #: str = None):
+        )
+        
+        # transform box from the egovehicle frame into the LiDAR frame
 
         lidar_box = transform_city_box_to_lidar_frame(box, pose_record, cs_record)
         box_list.append(lidar_box)
 
-    return data_path, box_list, cam_intrinsic
+    return box_list
 
 
-def _fill_trainval_infos(
-    nusc, train_scenes, val_scenes, test: bool = False, nsweeps: int = 10, filter_zero: bool = True
-):
+
+def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = True):
     """ """
-
     train_nusc_infos = []
     val_nusc_infos = []
 
     ref_chan = "LIDAR_TOP"  # The radar channel from which we track back n sweeps to aggregate the point cloud.
     chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
 
+    pdb.set_trace()
 
-    dl = SimpleArgoverseTrackingDataLoader(data_dir, labels_dir)
-    valid_log_ids = dl.sdb.get_valid_logs()
-    # loop through all of the logs
-    for log_id in valid_log_ids:
+    for split in ['train1', 'train2', 'train3', 'train4', 'train5', 'val', 'test']:
 
-        # for each log, loop through all of the LiDAR sweeps
-        log_ply_fpaths = dl.get_ordered_log_ply_fpaths(log_id)
+        # whether or not is test split
+        test = split == 'test'
 
-        for sample_idx, ply_fpath in enumerate(log_ply_fpaths):
-            print(f'{On sample_idx}/{len(log_ply_fpaths)}')
+        split_root_path = f'{root_path}/{split}'
+        dl = SimpleArgoverseTrackingDataLoader(data_dir=split_root_path, labels_dir=split_root_path)
+        valid_log_ids = dl.sdb.get_valid_logs()
+        # loop through all of the logs
+        for log_id in valid_log_ids:
 
+            # for each log, loop through all of the LiDAR sweeps
+            log_ply_fpaths = dl.get_ordered_log_ply_fpaths(log_id)
 
-            ref_sd_token = sample["data"][ref_chan]
-            ref_sd_rec = nusc.get(table_name="sample_data", token=ref_sd_token)
-            ref_cs_rec = nusc.get(
-                table_name="calibrated_sensor", token=ref_sd_rec["calibrated_sensor_token"]
+            log_calib_data = dl.get_log_calibration_data(log_id)
+            log_calib_data['vehicle_SE3_up_lidar_']
+            egovehicle_SE3_lidar = SE3(
+                rotation=quat2rotmat(log_calib_data['vehicle_SE3_up_lidar_']['rotation']['coefficients']),
+                translation=np.array(log_calib_data['vehicle_SE3_up_lidar_']['translation'])
             )
-            ref_pose_rec = nusc.get(table_name="ego_pose", token=ref_sd_rec["ego_pose_token"])
-            ref_time = 1e-6 * ref_sd_rec["timestamp"]
+            lidart0_SE3_egot0 = egovehicle_SE3_lidar.inverse()
 
-            ref_lidar_path, ref_boxes, _ = get_sample_data(nusc, ref_sd_token)
+            for sample_idx, ply_fpath in enumerate(log_ply_fpaths):
+                print(f'On {sample_idx}/{len(log_ply_fpaths)}')
 
-            ref_cam_front_token = sample["data"]["CAM_FRONT"]
-            ref_cam_path, _, ref_cam_intrinsic = nusc.get_sample_data(ref_cam_front_token)
+                pdb.set_trace()
+                lidar_timestamp = int(Path(ply_fpath).stem.split('_')[-1])
 
-            # Homogeneous transform from ego car frame to reference frame
-            egot0_SE3_lidart0 = SE3(
-                rotation=quat2rotmat(ref_cs_rec["rotation"]),
-                translation=np.array(ref_cs_rec["translation"])
-            )
-            lidart0_SE3_egot0 = egot0_SE3_lidart0.inverse()
+                city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, lidar_timestamp)
+                sweep_labels = dl.get_labels_at_lidar_timestamp(log_id, lidar_timestamp)
 
-            # Homogeneous transformation matrix from global to _current_ ego car frame
-            city_SE3_egot0 = SE3(
-                rotation=quat2rotmat(ref_pose_rec["rotation"]),
-                translation=np.array(ref_pose_rec["translation"])
-            )
-            egot0_SE3_city = city_SE3_egot0.inverse()
+                # nuscenes timestamps are in microseconds
+                ref_time_microseconds = lidar_timestamp * 1e-6
+                ref_time = ref_time_microseconds
+                ref_lidar_path = ply_fpath
 
-            info = {
-                "lidar_path": ref_lidar_path,
-                "cam_front_path": ref_cam_path,
-                "cam_intrinsic": ref_cam_intrinsic,
-                "token": sample["token"],
-                "sweeps": [],
-                "ref_from_car": lidart0_SE3_egot0.transform_matrix,
-                "car_from_global": egot0_SE3_city.transform_matrix,
-                "timestamp": ref_time,
-            }
+                ref_boxes = construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0)
+                pdb.set_trace()
 
-            sample_data_token = sample["data"][chan]
-            curr_sd_rec = nusc.get("sample_data", sample_data_token)
-            sweeps = []
+                ref_cam_front_token = sample["data"]["CAM_FRONT"]
+                ref_cam_path, _, ref_cam_intrinsic = nusc.get_sample_data(ref_cam_front_token)
 
-            # should be 9 samples for each 1 sweep
+                # Homogeneous transformation matrix from global to _current_ ego car frame
+                city_SE3_egot0 = SE3(
+                    rotation=quat2rotmat(ref_pose_rec["rotation"]),
+                    translation=np.array(ref_pose_rec["translation"])
+                )
+                egot0_SE3_city = city_SE3_egot0.inverse()
 
-            while len(sweeps) < nsweeps - 1:
-                # if there are no samples before, just pad with the same sample
-                if curr_sd_rec["prev"] == "":
-                    if len(sweeps) == 0:
+                info = {
+                    "lidar_path": ref_lidar_path,
+                    "cam_front_path": ref_cam_path,
+                    "cam_intrinsic": ref_cam_intrinsic,
+                    "token": sample["token"],
+                    "sweeps": [],
+                    "ref_from_car": lidart0_SE3_egot0.transform_matrix,
+                    "car_from_global": egot0_SE3_city.transform_matrix,
+                    "timestamp": ref_time,
+                }
+
+                sample_data_token = sample["data"][chan]
+                curr_sd_rec = nusc.get("sample_data", sample_data_token)
+                sweeps = []
+
+                # should be 9 samples for each 1 sweep
+
+                while len(sweeps) < nsweeps - 1:
+                    # if there are no samples before, just pad with the same sample
+                    if curr_sd_rec["prev"] == "":
+                        if len(sweeps) == 0:
+                            sweep = {
+                                "lidar_path": ref_lidar_path,
+                                "sample_data_token": curr_sd_rec["token"],
+                                "transform_matrix": None,
+                                "time_lag": curr_sd_rec["timestamp"] * 0
+                            }
+                            sweeps.append(sweep)
+                        else:
+                            sweeps.append(sweeps[-1])
+                    else:
+                        # accumulate the 9 prior sweeps
+                        curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
+
+                        # Get past pose
+                        current_pose_rec = nusc.get("ego_pose", curr_sd_rec["ego_pose_token"])
+
+                        city_SE3_egoti = SE3(
+                            rotation=quat2rotmat(current_pose_rec["rotation"]),
+                            translation=np.array(current_pose_rec["translation"])
+                        )
+
+                        # Homogeneous transformation matrix from sensor coordinate frame to ego car frame.
+                        current_cs_rec = nusc.get(
+                            "calibrated_sensor", curr_sd_rec["calibrated_sensor_token"]
+                        )
+                        egoti_SE3_lidarti = SE3(
+                            rotation=quat2rotmat(current_cs_rec["rotation"]),
+                            translation=np.array(current_cs_rec["translation"])
+                        )
+
+                        lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
+                        lidar_path = nusc.get_sample_data_path(curr_sd_rec["token"])
+
+                        time_lag = ref_time - 1e-6 * curr_sd_rec["timestamp"]
+
+                        if 'n015-2018-08-02-17-16-37+0800__LIDAR_TOP__1533201470898274' in lidar_path:
+                            # trainval example "transform_matrix"
+                            expected_tm = np.array(
+                                [
+                                    [1, 0, 0, 0],
+                                    [0, 1, 0, 0.001],
+                                    [0, 0, 1, 0],
+                                    [0, 0, 0, 1]
+                                ])
+                            assert np.allclose(expected_tm, lidart0_SE3_lidarti.transform_matrix, atol=1e-2)
+
+
                         sweep = {
-                            "lidar_path": ref_lidar_path,
+                            "lidar_path": lidar_path,
                             "sample_data_token": curr_sd_rec["token"],
-                            "transform_matrix": None,
-                            "time_lag": curr_sd_rec["timestamp"] * 0,
-                            # time_lag: 0,
+                            "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
+                            "global_from_car": city_SE3_egoti.transform_matrix,
+                            "car_from_current": egoti_SE3_lidarti.transform_matrix,
+                            "time_lag": time_lag,
                         }
                         sweeps.append(sweep)
+
+                info["sweeps"] = sweeps
+
+                assert (
+                    len(info["sweeps"]) == nsweeps - 1
+                ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
+
+                # save the annotations if we are looking at train/val log
+                if not test:
+                    annotations = [
+                        nusc.get("sample_annotation", token) for token in sample["anns"]
+                    ]
+
+                    mask = np.array(
+                        [
+                            (anno["num_lidar_pts"] + anno["num_radar_pts"]) > 0
+                            for anno in annotations
+                        ],
+                        dtype=bool,
+                    ).reshape(-1)
+
+                    # form N x 3 arrays for 3d location, dim, velocity info
+                    locs = np.array([b.center for b in ref_boxes]).reshape(-1, 3)
+                    dims = np.array([b.wlh for b in ref_boxes]).reshape(-1, 3)
+                    velocity = np.array([b.velocity for b in ref_boxes]).reshape(-1, 3)
+
+                    rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(-1, 1)
+                    names = np.array([b.name for b in ref_boxes])
+                    tokens = np.array([b.token for b in ref_boxes])
+                    gt_boxes = np.concatenate(
+                        [locs, dims, velocity[:, :2], -rots - np.pi / 2], axis=1
+                    )
+
+                    assert len(annotations) == len(gt_boxes) == len(velocity)
+
+                    if not filter_zero:
+                        info["gt_boxes"] = gt_boxes
+                        info["gt_boxes_velocity"] = velocity
+                        info["gt_names"] = np.array(
+                            [general_to_detection[name] for name in names]
+                        )
+                        info["gt_boxes_token"] = tokens
                     else:
-                        sweeps.append(sweeps[-1])
+                        info["gt_boxes"] = gt_boxes[mask, :]
+                        info["gt_boxes_velocity"] = velocity[mask, :]
+                        info["gt_names"] = np.array(
+                            [general_to_detection[name] for name in names]
+                        )[mask]
+                        info["gt_boxes_token"] = tokens[mask]
+
+                if sample["scene_token"] in train_scenes:
+                    train_nusc_infos.append(info)
                 else:
-                    # accumulate the 9 prior sweeps
-                    curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
-
-                    # Get past pose
-                    current_pose_rec = nusc.get("ego_pose", curr_sd_rec["ego_pose_token"])
-
-                    city_SE3_egoti = SE3(
-                        rotation=quat2rotmat(current_pose_rec["rotation"]),
-                        translation=np.array(current_pose_rec["translation"])
-                    )
-
-                    # Homogeneous transformation matrix from sensor coordinate frame to ego car frame.
-                    current_cs_rec = nusc.get(
-                        "calibrated_sensor", curr_sd_rec["calibrated_sensor_token"]
-                    )
-                    egoti_SE3_lidarti = SE3(
-                        rotation=quat2rotmat(current_cs_rec["rotation"]),
-                        translation=np.array(current_cs_rec["translation"])
-                    )
-
-                    lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
-                    lidar_path = nusc.get_sample_data_path(curr_sd_rec["token"])
-
-                    time_lag = ref_time - 1e-6 * curr_sd_rec["timestamp"]
-
-                    if 'n015-2018-08-02-17-16-37+0800__LIDAR_TOP__1533201470898274' in lidar_path:
-                        # trainval example "transform_matrix"
-                        expected_tm = np.array(
-                            [
-                                [1, 0, 0, 0],
-                                [0, 1, 0, 0.001],
-                                [0, 0, 1, 0],
-                                [0, 0, 0, 1]
-                            ])
-                        assert np.allclose(expected_tm, lidart0_SE3_lidarti.transform_matrix, atol=1e-2)
-
-
-                    sweep = {
-                        "lidar_path": lidar_path,
-                        "sample_data_token": curr_sd_rec["token"],
-                        "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
-                        "global_from_car": city_SE3_egoti.transform_matrix,
-                        "car_from_current": egoti_SE3_lidarti.transform_matrix,
-                        "time_lag": time_lag,
-                    }
-                    sweeps.append(sweep)
-
-            info["sweeps"] = sweeps
-
-            assert (
-                len(info["sweeps"]) == nsweeps - 1
-            ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
-
-            # save the annotations if we are looking at train/val log
-            if not test:
-                annotations = [
-                    nusc.get("sample_annotation", token) for token in sample["anns"]
-                ]
-
-                mask = np.array(
-                    [
-                        (anno["num_lidar_pts"] + anno["num_radar_pts"]) > 0
-                        for anno in annotations
-                    ],
-                    dtype=bool,
-                ).reshape(-1)
-
-                # form N x 3 arrays for 3d location, dim, velocity info
-                locs = np.array([b.center for b in ref_boxes]).reshape(-1, 3)
-                dims = np.array([b.wlh for b in ref_boxes]).reshape(-1, 3)
-                velocity = np.array([b.velocity for b in ref_boxes]).reshape(-1, 3)
-
-                rots = np.array([quaternion_yaw(b.orientation) for b in ref_boxes]).reshape(-1, 1)
-                names = np.array([b.name for b in ref_boxes])
-                tokens = np.array([b.token for b in ref_boxes])
-                gt_boxes = np.concatenate(
-                    [locs, dims, velocity[:, :2], -rots - np.pi / 2], axis=1
-                )
-
-                assert len(annotations) == len(gt_boxes) == len(velocity)
-
-                if not filter_zero:
-                    info["gt_boxes"] = gt_boxes
-                    info["gt_boxes_velocity"] = velocity
-                    info["gt_names"] = np.array(
-                        [general_to_detection[name] for name in names]
-                    )
-                    info["gt_boxes_token"] = tokens
-                else:
-                    info["gt_boxes"] = gt_boxes[mask, :]
-                    info["gt_boxes_velocity"] = velocity[mask, :]
-                    info["gt_names"] = np.array(
-                        [general_to_detection[name] for name in names]
-                    )[mask]
-                    info["gt_boxes_token"] = tokens[mask]
-
-            if sample["scene_token"] in train_scenes:
-                train_nusc_infos.append(info)
-            else:
-                val_nusc_infos.append(info)
+                    val_nusc_infos.append(info)
 
     return train_nusc_infos, val_nusc_infos
 
@@ -481,64 +498,16 @@ def _get_available_scenes(nusc):
     return available_scenes
 
 
-def create_nuscenes_infos(
+def create_argoverse_infos(
     root_path: str,
-    version: str = "v1.0-trainval",
     nsweeps: int = 10,
     filter_zero: bool = True,
 ):
     """ """
-    nusc = NuScenes(version=version, dataroot=root_path, verbose=True)
-    available_vers = ["v1.0-trainval", "v1.0-test", "v1.0-mini"]
-    assert version in available_vers
-    if version == "v1.0-trainval":
-        train_scenes = splits.train
-        val_scenes = splits.val
-    elif version == "v1.0-test":
-        train_scenes = splits.test
-        val_scenes = []
-    elif version == "v1.0-mini":
-        train_scenes = splits.mini_train
-        val_scenes = splits.mini_val
-    else:
-        raise ValueError("unknown")
-    test = "test" in version
-    root_path = Path(root_path)
-
-    pdb.set_trace()
-    # filter exist scenes. you may only download part of dataset.
-    available_scenes = _get_available_scenes(nusc)
-
-    """
-    Each scene has keys like:
-        'token',
-        'log_token',
-        'nbr_samples', e.g. 40
-        'first_sample_token',
-        'last_sample_token',
-        'name', e.g. 'scene-0001'
-        'description', e.g. 'Construction, maneuver between several trucks'
-    """
-    available_scene_names = [s["name"] for s in available_scenes]
-    train_scenes = list(filter(lambda x: x in available_scene_names, train_scenes))
-    val_scenes = list(filter(lambda x: x in available_scene_names, val_scenes))
-    train_scenes = set(
-        [
-            available_scenes[available_scene_names.index(s)]["token"]
-            for s in train_scenes
-        ]
+    train_nusc_infos, val_nusc_infos = _fill_trainval_infos(root_path, nsweeps=nsweeps, filter_zero=filter_zero
     )
-    val_scenes = set(
-        [available_scenes[available_scene_names.index(s)]["token"] for s in val_scenes]
-    )
-    if test:
-        print(f"test scene: {len(train_scenes)}")
-    else:
-        print(f"train scene: {len(train_scenes)}, val scene: {len(val_scenes)}")
 
-    train_nusc_infos, val_nusc_infos = _fill_trainval_infos(
-        nusc, train_scenes, val_scenes, test, nsweeps=nsweeps, filter_zero=filter_zero
-    )
+    root_path = "data/argoverse"
 
     if test:
         print(f"test sample: {len(train_nusc_infos)}")
@@ -570,13 +539,9 @@ def create_nuscenes_infos(
 
 if __name__ == "__main__":
     """ """
-    NUSCENES_TRAINVAL_DATASET_ROOT = "data/nuScenes"
-    #version = "v1.0-trainval"
-    version = "v1.0-test"
-    create_nuscenes_infos(
-        root_path=NUSCENES_TRAINVAL_DATASET_ROOT, version=version, nsweeps=10
+    #ARGOVERSE_DATASET_ROOT = "data/argoverse"
+    ARGOVERSE_DATASET_ROOT = '/srv/share/cliu324/argoverse-tracking-readonly'
+    create_argoverse_infos(
+        root_path=ARGOVERSE_DATASET_ROOT, nsweeps=10
     )
-    # test_rotmat2quat()
-    # test_transform_city_box_to_lidar_frame()
-    # test_quaternion_yaw_scipy()
 
