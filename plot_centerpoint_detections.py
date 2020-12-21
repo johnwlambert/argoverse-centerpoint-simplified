@@ -17,7 +17,7 @@ def get_box_corners(box, wlh_factor: float = 1.0) -> np.ndarray:
     :return: <np.float: 3, 8>. First four corners are the ones facing forward.
     The last four are the ones facing backwards.
     """
-    w, l, h = self.wlh * wlh_factor
+    w, l, h = box.wlh * wlh_factor
 
     # 3D bounding box corners. (Convention: x points forward, y to the left, z up.)
     x_corners = l / 2 * np.array([1,  1,  1,  1, -1, -1, -1, -1])
@@ -26,10 +26,10 @@ def get_box_corners(box, wlh_factor: float = 1.0) -> np.ndarray:
     corners = np.vstack((x_corners, y_corners, z_corners))
 
     # Rotate
-    corners = np.dot(self.orientation.rotation_matrix, corners)
+    corners = np.dot(box.orientation.rotation_matrix, corners)
 
     # Translate
-    x, y, z = self.center
+    x, y, z = box.center
     corners[0, :] = corners[0, :] + x
     corners[1, :] = corners[1, :] + y
     corners[2, :] = corners[2, :] + z
@@ -89,6 +89,7 @@ def render_nuscenes_box(
         color=colors[0],
         linewidth=linewidth,
     )
+    axis.text(center_bottom[0], center_bottom[1], f'label = {box.label}')
 
 
 def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.ndarray:
