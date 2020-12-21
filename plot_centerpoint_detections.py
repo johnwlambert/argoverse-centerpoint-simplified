@@ -11,6 +11,21 @@ from pyquaternion import Quaternion
 from argoverse.utils.pkl_utils import load_pkl_dictionary
 
 
+
+nuscenes_class_names = [
+    'car',
+    'truck',
+    'construction_vehicle',
+    'bus',
+    'trailer',
+    'barrier',
+    'motorcycle',
+    'bicycle',
+    'pedestrian',
+    'traffic_cone'
+]
+
+
 def get_box_corners(box, wlh_factor: float = 1.0) -> np.ndarray:
     """Returns the bounding box corners.
     :param wlh_factor: Multiply w, l, h by a factor to scale the box.
@@ -89,7 +104,7 @@ def render_nuscenes_box(
         color=colors[0],
         linewidth=linewidth,
     )
-    axis.text(center_bottom[0], center_bottom[1], f'label = {box.label}')
+    axis.text(center_bottom[0], center_bottom[1], f'label = {nuscenes_class_names[box.label]}')
 
 
 def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.ndarray:
