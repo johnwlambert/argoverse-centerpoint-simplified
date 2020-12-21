@@ -350,7 +350,7 @@ def _fill_trainval_infos(
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
         sweeps = []
 
-        # should be 9 samples for each 1 sweep
+        # should be 9 sweeps for each 1 sample
 
         while len(sweeps) < nsweeps - 1:
             # if there are no samples before, just pad with the same sample
