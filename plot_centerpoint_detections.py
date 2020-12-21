@@ -1,4 +1,5 @@
 
+import glob
 import pdb
 from typing import Any, Dict, List, Tuple
 
@@ -205,6 +206,23 @@ def visual(points, gt_anno, det, i, eval_range=35, conf_th=0.5):
     plt.savefig("demo/file%02d.png" % i)
     plt.close()
 
+def read_file(path, tries=2, num_point_feature=4):
+    points = None
+    try_cnt = 0
+    while points is None and try_cnt < tries:
+        try_cnt += 1
+        try:
+            points = np.fromfile(path, dtype=np.float32)
+            s = points.shape[0]
+            if s % 5 != 0:
+                points = points[: s - (s % 5)]
+            points = points.reshape(-1, 5)[:, :num_point_feature]
+        except Exception:
+            points = None
+
+    return points
+
+    
 def main():
     """ """
     pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
@@ -220,8 +238,8 @@ def main():
     
     pdb.set_trace()
     
-    lidar_fpath = glob.glob('n015*229.pcd.bin')[0]
-    from centerpoint.nuscenes_common import read_file
+    lidar_fpath = glob.glob('/Users/jlambert/Downloads/n015*229.pcd.bin')[0]
+    from centerpoint.utils.loading import read_file
     points = read_file(lidar_fpath)
     
     from nuscenes_2a1710d55ac747339eae4502565b956b_python import annos
