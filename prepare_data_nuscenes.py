@@ -8,8 +8,6 @@ import random
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from functools import reduce
-
 import numpy as np
 from argoverse.utils.se3 import SE3
 from argoverse.utils.transform import quat2rotmat, quat_argo2scipy
