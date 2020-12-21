@@ -1,16 +1,16 @@
+
+import pdb
 from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
 from pyquaternion import Quaternion
 
 from argoverse.utils.pkl_utils import load_pkl_dictionary
 
 
-def main():
-    """ """
-    pkl_fpath = ""
-    load_pkl_dictionary(pkl_fpath)
+
 
 
 def render(
@@ -167,6 +167,8 @@ def _second_det_to_nusc_box(detection):
     return box_list
 
 
+
+
 def visual(points, gt_anno, det, i, eval_range=35, conf_th=0.5):
     """ """
     _, ax = plt.subplots(1, 1, figsize=(9, 9), dpi=200)
@@ -203,6 +205,31 @@ def visual(points, gt_anno, det, i, eval_range=35, conf_th=0.5):
     plt.savefig("demo/file%02d.png" % i)
     plt.close()
 
+def main():
+    """ """
+    pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
+    pkl_data = load_pkl_dictionary(pkl_fpath)
+    
+    keys = list(pkl_data.keys()) # get the tokens
+    token = keys[0]
+    
+    pkl_data[token]['box3d_lidar']
+    pkl_data[token]['scores']
+    pkl_data[token]['label_preds']
+    pkl_data[token]['metadata']
+    
+    pdb.set_trace()
+    
+    lidar_fpath = glob.glob('n015*229.pcd.bin')[0]
+    from centerpoint.nuscenes_common import read_file
+    points = read_file(lidar_fpath)
+    
+    from nuscenes_2a1710d55ac747339eae4502565b956b_python import annos
+    
+    visual(points, gt_anno, dets=pkl_data, i=0, eval_range=35, conf_th=0.5)
+    
+    
+    
 
 if __name__ == "__main__":
     main()
