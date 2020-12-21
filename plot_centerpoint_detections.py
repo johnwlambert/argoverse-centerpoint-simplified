@@ -104,7 +104,7 @@ def render_nuscenes_box(
         color=colors[0],
         linewidth=linewidth,
     )
-    axis.text(center_bottom[0], center_bottom[1], f'label = {nuscenes_class_names[box.label]}')
+    axis.text(center_bottom[0], center_bottom[1], f'{nuscenes_class_names[box.label]}', color='r')
 
 
 def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.ndarray:
