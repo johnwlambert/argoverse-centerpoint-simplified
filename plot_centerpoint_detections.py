@@ -1,5 +1,3 @@
-
-
 from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
@@ -9,19 +7,20 @@ from pyquaternion import Quaternion
 from argoverse.utils.pkl_utils import load_pkl_dictionary
 
 
-
 def main():
-	""" """
-	pkl_fpath = ""
-	load_pkl_dictionary(pkl_fpath)
+    """ """
+    pkl_fpath = ""
+    load_pkl_dictionary(pkl_fpath)
 
 
-def render(box,
-           axis: Axes,
-           view: np.ndarray = np.eye(3),
-           normalize: bool = False,
-           colors: Tuple = ('b', 'r', 'k'),
-           linewidth: float = 2) -> None:
+def render(
+    box,
+    axis: Axes,
+    view: np.ndarray = np.eye(3),
+    normalize: bool = False,
+    colors: Tuple = ("b", "r", "k"),
+    linewidth: float = 2,
+) -> None:
     """
     Renders the box in the provided Matplotlib axis.
     :param axis: Axis onto which the box should be drawn.
@@ -36,14 +35,22 @@ def render(box,
     def draw_rect(selected_corners, color):
         prev = selected_corners[-1]
         for corner in selected_corners:
-            axis.plot([prev[0], corner[0]], [prev[1], corner[1]], color=color, linewidth=linewidth)
+            axis.plot(
+                [prev[0], corner[0]],
+                [prev[1], corner[1]],
+                color=color,
+                linewidth=linewidth,
+            )
             prev = corner
 
     # Draw the sides
     for i in range(4):
-        axis.plot([corners.T[i][0], corners.T[i + 4][0]],
-                  [corners.T[i][1], corners.T[i + 4][1]],
-                  color=colors[2], linewidth=linewidth)
+        axis.plot(
+            [corners.T[i][0], corners.T[i + 4][0]],
+            [corners.T[i][1], corners.T[i + 4][1]],
+            color=colors[2],
+            linewidth=linewidth,
+        )
 
     # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
     draw_rect(corners.T[:4], colors[0])
@@ -52,10 +59,12 @@ def render(box,
     # Draw line indicating the front
     center_bottom_forward = np.mean(corners.T[2:4], axis=0)
     center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
-    axis.plot([center_bottom[0], center_bottom_forward[0]],
-              [center_bottom[1], center_bottom_forward[1]],
-              color=colors[0], linewidth=linewidth)
-
+    axis.plot(
+        [center_bottom[0], center_bottom_forward[0]],
+        [center_bottom[1], center_bottom_forward[1]],
+        color=colors[0],
+        linewidth=linewidth,
+    )
 
 
 def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.ndarray:
@@ -80,7 +89,7 @@ def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.nda
     assert points.shape[0] == 3
 
     viewpad = np.eye(4)
-    viewpad[:view.shape[0], :view.shape[1]] = view
+    viewpad[: view.shape[0], : view.shape[1]] = view
 
     nbr_points = points.shape[1]
 
@@ -95,19 +104,20 @@ def view_points(points: np.ndarray, view: np.ndarray, normalize: bool) -> np.nda
     return points
 
 
-
 class Box:
     """ Simple data class representing a 3d box including, label, score and velocity. """
 
-    def __init__(self,
-                 center: List[float],
-                 size: List[float],
-                 orientation: Quaternion,
-                 label: int = np.nan,
-                 score: float = np.nan,
-                 velocity: Tuple = (np.nan, np.nan, np.nan),
-                 name: str = None,
-                 token: str = None):
+    def __init__(
+        self,
+        center: List[float],
+        size: List[float],
+        orientation: Quaternion,
+        label: int = np.nan,
+        score: float = np.nan,
+        velocity: Tuple = (np.nan, np.nan, np.nan),
+        name: str = None,
+        token: str = None,
+    ):
         """
         :param center: Center of box given as x, y, z.
         :param size: Size of box in width, length, height.
@@ -136,7 +146,7 @@ class Box:
 
 
 def _second_det_to_nusc_box(detection):
-	""" """
+    """ """
     box3d = detection["box3d_lidar"]
     scores = detection["scores"]
     labels = detection["label_preds"]
@@ -158,7 +168,7 @@ def _second_det_to_nusc_box(detection):
 
 
 def visual(points, gt_anno, det, i, eval_range=35, conf_th=0.5):
-	""" """
+    """ """
     _, ax = plt.subplots(1, 1, figsize=(9, 9), dpi=200)
     points = remove_close(points, radius=3)
     points = view_points(points[:3, :], np.eye(4), normalize=False)
@@ -172,25 +182,27 @@ def visual(points, gt_anno, det, i, eval_range=35, conf_th=0.5):
 
     # Show GT boxes.
     for box in boxes_gt:
-        render_nuscenes_box(box, ax, view=np.eye(4), colors=('r', 'r', 'r'), linewidth=2)
+        render_nuscenes_box(
+            box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2
+        )
 
     # Show EST boxes.
     for box in boxes_est:
         if box.score >= conf_th:
-            render_nuscenes_box(box, ax, view=np.eye(4), colors=('b', 'b', 'b'), linewidth=1)
+            render_nuscenes_box(
+                box, ax, view=np.eye(4), colors=("b", "b", "b"), linewidth=1
+            )
 
-
-    axes_limit = eval_range + 3  # Slightly bigger to include boxes that extend beyond the range.
+    axes_limit = (
+        eval_range + 3
+    )  # Slightly bigger to include boxes that extend beyond the range.
     ax.set_xlim(-axes_limit, axes_limit)
     ax.set_ylim(-axes_limit, axes_limit)
-    plt.axis('off')
+    plt.axis("off")
 
     plt.savefig("demo/file%02d.png" % i)
     plt.close()
 
 
-
-if __name__ == '__main__':
-	main()
-
-
+if __name__ == "__main__":
+    main()
