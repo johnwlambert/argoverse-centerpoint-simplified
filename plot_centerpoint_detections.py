@@ -11,10 +11,33 @@ from pyquaternion import Quaternion
 from argoverse.utils.pkl_utils import load_pkl_dictionary
 
 
+def get_box_corners(box, wlh_factor: float = 1.0) -> np.ndarray:
+    """Returns the bounding box corners.
+    :param wlh_factor: Multiply w, l, h by a factor to scale the box.
+    :return: <np.float: 3, 8>. First four corners are the ones facing forward.
+    The last four are the ones facing backwards.
+    """
+    w, l, h = self.wlh * wlh_factor
+
+    # 3D bounding box corners. (Convention: x points forward, y to the left, z up.)
+    x_corners = l / 2 * np.array([1,  1,  1,  1, -1, -1, -1, -1])
+    y_corners = w / 2 * np.array([1, -1, -1,  1,  1, -1, -1,  1])
+    z_corners = h / 2 * np.array([1,  1, -1, -1,  1,  1, -1, -1])
+    corners = np.vstack((x_corners, y_corners, z_corners))
+
+    # Rotate
+    corners = np.dot(self.orientation.rotation_matrix, corners)
+
+    # Translate
+    x, y, z = self.center
+    corners[0, :] = corners[0, :] + x
+    corners[1, :] = corners[1, :] + y
+    corners[2, :] = corners[2, :] + z
+
+    return corners
 
 
-
-def render(
+def render_nuscenes_box(
     box,
     axis: Axes,
     view: np.ndarray = np.eye(3),
@@ -31,7 +54,7 @@ def render(
         back and sides.
     :param linewidth: Width in pixel of the box sides.
     """
-    corners = view_points(box.corners(), view, normalize=normalize)[:2, :]
+    corners = view_points(get_box_corners(box), view, normalize=normalize)[:2, :]
 
     def draw_rect(selected_corners, color):
         prev = selected_corners[-1]
@@ -147,10 +170,18 @@ class Box:
 
 
 def _second_det_to_nusc_box(detection):
-    """ """
+    """ Boxes have shape
+    
+    locs
+    dims
+    velocity_x
+    velocity_y
+    yaw
+    """
     box3d = detection["box3d_lidar"]
     scores = detection["scores"]
     labels = detection["label_preds"]
+    # undo the phase shift from the original data file creation
     box3d[:, -1] = -box3d[:, -1] - np.pi / 2
     box_list = []
     for i in range(box3d.shape[0]):
@@ -170,24 +201,24 @@ def _second_det_to_nusc_box(detection):
 
 
 
-def visual(points, gt_anno, det, i, eval_range=35, conf_th=0.5):
+def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     """ """
     _, ax = plt.subplots(1, 1, figsize=(9, 9), dpi=200)
-    points = remove_close(points, radius=3)
-    points = view_points(points[:3, :], np.eye(4), normalize=False)
+    #points = remove_close(points, radius=3)
+    #points = view_points(points[:3, :], np.eye(4), normalize=False)
 
     dists = np.sqrt(np.sum(points[:2, :] ** 2, axis=0))
     colors = np.minimum(1, dists / eval_range)
     ax.scatter(points[0, :], points[1, :], c=colors, s=0.2)
 
-    boxes_gt = _second_det_to_nusc_box(gt_anno)
+    #boxes_gt = _second_det_to_nusc_box(gt_anno)
     boxes_est = _second_det_to_nusc_box(det)
 
-    # Show GT boxes.
-    for box in boxes_gt:
-        render_nuscenes_box(
-            box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2
-        )
+#     # Show GT boxes.
+#     for box in boxes_gt:
+#         render_nuscenes_box(
+#             box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2
+#         )
 
     # Show EST boxes.
     for box in boxes_est:
@@ -244,7 +275,7 @@ def main():
     
     from nuscenes_2a1710d55ac747339eae4502565b956b_python import annos
     
-    visual(points, gt_anno, dets=pkl_data, i=0, eval_range=35, conf_th=0.5)
+    visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=35, conf_th=0.5)
     
     
     
