@@ -161,22 +161,27 @@ def construct_argoverse_boxes_lidarfr(sweep_labels: List[Dict[str,Any]], lidar_S
 
 
 
-def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = True):
-    """ """
-    train_nusc_infos = []
-    val_nusc_infos = []
+def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_zero: bool = True):
+    """
+    Our reference channel is "UP_LIDAR", similar to nuScenes' "LIDAR_TOP"
+    channel from which we track back n sweeps to aggregate the point cloud.
+    reference channel of the current sample_rec that the point clouds are mapped to.
+    """
+    split_argoverse_infos = []
 
-    ref_chan = "LIDAR_TOP"  # The radar channel from which we track back n sweeps to aggregate the point cloud.
-    chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
+    split_subdirs_map = {
+        'train': ['train1', 'train2', 'train3', 'train4', 'train5'],
+        'val': 'val',
+        'test': 'test'
+    }
+    split_subdirs = split_subdirs_map[split]
 
-    pdb.set_trace()
-
-    for split in ['train1', 'train2', 'train3', 'train4', 'train5', 'val', 'test']:
+    for split_subdir in split_subdirs:
 
         # whether or not is test split
         test = split == 'test'
 
-        split_root_path = f'{root_path}/{split}'
+        split_root_path = f'{root_path}/{split_subdir}'
         dl = SimpleArgoverseTrackingDataLoader(data_dir=split_root_path, labels_dir=split_root_path)
         valid_log_ids = dl.sdb.get_valid_logs()
         # loop through all of the logs
@@ -198,6 +203,9 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
             num_log_sweeps = len(log_ply_fpaths)
             for sample_idx, ply_fpath in enumerate(log_ply_fpaths):
                 print(f'On {sample_idx}/{num_log_sweeps}')
+
+                if sample_idx > 5:
+                    break
 
                 is_first_log_sweep = sample_idx == 0
                 is_last_log_sweep = sample_idx == num_log_sweeps - 1
@@ -339,12 +347,9 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
                         info["gt_names"] = np.array([names])[mask] # already ran `general_to_detection` conversion previously
                         info["gt_boxes_token"] = tokens[mask]
 
-                if 'train' in split:
-                    train_nusc_infos.append(info)
-                else:
-                    val_nusc_infos.append(info)
+                split_argoverse_infos.append(info)
 
-    return train_nusc_infos, val_nusc_infos
+    return split_argoverse_infos
 
 
 def quaternion_yaw(q: Quaternion) -> float:
@@ -378,37 +383,19 @@ def create_argoverse_infos(
     filter_zero: bool = True,
 ):
     """ """
-    train_nusc_infos, val_nusc_infos = _fill_trainval_infos(root_path, nsweeps=nsweeps, filter_zero=filter_zero
-    )
+    save_path = "data/argoverse"
 
-    root_path = "data/argoverse"
+    for split in ['train', 'val', 'test']:
+        split_argoverse_infos = _fill_trainval_infos(split, root_path, nsweeps=nsweeps, filter_zero=filter_zero)
 
-    if test:
-        print(f"test sample: {len(train_nusc_infos)}")
-        with open(
-            root_path / "infos_test_{:02d}sweeps_withvelo.pkl".format(nsweeps), "wb"
-        ) as f:
-            pickle.dump(train_nusc_infos, f)
-    else:
-        print(
-            f"train sample: {len(train_nusc_infos)}, val sample: {len(val_nusc_infos)}"
-        )
-        with open(
-            root_path
-            / "infos_train_{:02d}sweeps_withvelo_filter_{}.pkl".format(
-                nsweeps, filter_zero
-            ),
-            "wb",
-        ) as f:
-            pickle.dump(train_nusc_infos, f)
-        with open(
-            root_path
-            / "infos_val_{:02d}sweeps_withvelo_filter_{}.pkl".format(
-                nsweeps, filter_zero
-            ),
-            "wb",
-        ) as f:
-            pickle.dump(val_nusc_infos, f)
+        if split in ['train', 'val']:
+            pkl_fpath = save_path / f"infos_{split}_{nsweeps:02d}sweeps_withvelo_filter_{filter_zero}.pkl"
+        else:
+            pkl_fpath = save_path / f"infos_{split}_{nsweeps:02d}sweeps_withvelo.pkl"
+        
+        print(f"{split} sample: {len(split_argoverse_infos)}")
+        save_pkl_dictionary(pkl_fpath, split_argoverse_infos)
+
 
 
 if __name__ == "__main__":
