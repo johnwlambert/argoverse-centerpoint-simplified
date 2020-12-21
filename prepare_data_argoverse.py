@@ -17,7 +17,6 @@ from scipy.spatial.transform import Rotation
 
 try:
     from nuscenes import NuScenes
-    from nuscenes.utils import splits
     from nuscenes.utils.data_classes import Box
 except:
     print("nuScenes devkit not Found!")
@@ -79,9 +78,6 @@ general_to_detection = {
     "movable_object.debris": "ignore",
     "static_object.bicycle_rack": "ignore",
 }
-
-
-
 
 
 def rotmat2quat(R: np.ndarray) -> np.ndarray:
@@ -199,8 +195,13 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
             )
             lidart0_SE3_egot0 = egovehicle_SE3_lidar.inverse()
 
+            num_log_sweeps = len(log_ply_fpaths)
             for sample_idx, ply_fpath in enumerate(log_ply_fpaths):
-                print(f'On {sample_idx}/{len(log_ply_fpaths)}')
+                print(f'On {sample_idx}/{num_log_sweeps}')
+
+                is_first_log_sweep = sample_idx == 0
+                is_last_log_sweep = sample_idx == num_log_sweeps - 1
+
                 lidar_timestamp = int(Path(ply_fpath).stem.split('_')[-1])
 
                 city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, lidar_timestamp)
@@ -226,7 +227,7 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
                     "lidar_path": ref_lidar_path,
                     "cam_front_path": ref_cam_path,
                     "cam_intrinsic": ref_cam_intrinsic,
-                    "token": sample["token"],
+                    "token": lidar_timestamp,
                     "sweeps": [],
                     "ref_from_car": lidart0_SE3_egot0.transform_matrix,
                     "car_from_global": egot0_SE3_city.transform_matrix,
@@ -237,19 +238,22 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
                 # should be 9 sweeps for each 1 sample
 
                 while len(sweeps) < nsweeps - 1:
-                    # if there are no samples before, just pad with the same sample
-                    if curr_sd_rec["prev"] == "":
+                    
+
+                    if is_first_log_sweep or is_last_log_sweep:
+                        # if there are no samples before, just pad with the same sample
                         if len(sweeps) == 0:
                             sweep = {
                                 "lidar_path": ref_lidar_path,
-                                "sample_data_token": curr_sd_rec["token"],
+                                "sample_data_token": lidar_timestamp,
                                 "transform_matrix": None,
-                                "time_lag": curr_sd_rec["timestamp"] * 0
+                                "time_lag": 0
                             }
                             sweeps.append(sweep)
                         else:
                             sweeps.append(sweeps[-1])
                     else:
+                        pdb.set_trace()
                         # accumulate the 9 prior sweeps
                         curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
 
@@ -305,17 +309,10 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
 
                 # save the annotations if we are looking at train/val log
                 if not test:
-                    annotations = [
-                        nusc.get("sample_annotation", token) for token in sample["anns"]
-                    ]
+                    pdb.set_trace()
 
-                    mask = np.array(
-                        [
-                            (anno["num_lidar_pts"] + anno["num_radar_pts"]) > 0
-                            for anno in annotations
-                        ],
-                        dtype=bool,
-                    ).reshape(-1)
+                    num_gt_boxes = len(ref_boxes)
+                    mask = np.ones(num_gt_boxes, dtype=bool).reshape(-1) # assume all are visible
 
                     # form N x 3 arrays for 3d location, dim, velocity info
                     locs = np.array([b.center for b in ref_boxes]).reshape(-1, 3)
@@ -329,24 +326,20 @@ def _fill_trainval_infos(root_path: str, nsweeps: int = 10, filter_zero: bool = 
                         [locs, dims, velocity[:, :2], -rots - np.pi / 2], axis=1
                     )
 
-                    assert len(annotations) == len(gt_boxes) == len(velocity)
+                    assert len(gt_boxes) == len(velocity)
 
                     if not filter_zero:
                         info["gt_boxes"] = gt_boxes
                         info["gt_boxes_velocity"] = velocity
-                        info["gt_names"] = np.array(
-                            [general_to_detection[name] for name in names]
-                        )
+                        info["gt_names"] = np.array([names]) # already ran `general_to_detection` conversion previously
                         info["gt_boxes_token"] = tokens
                     else:
                         info["gt_boxes"] = gt_boxes[mask, :]
                         info["gt_boxes_velocity"] = velocity[mask, :]
-                        info["gt_names"] = np.array(
-                            [general_to_detection[name] for name in names]
-                        )[mask]
+                        info["gt_names"] = np.array([names])[mask] # already ran `general_to_detection` conversion previously
                         info["gt_boxes_token"] = tokens[mask]
 
-                if sample["scene_token"] in train_scenes:
+                if 'train' in split:
                     train_nusc_infos.append(info)
                 else:
                     val_nusc_infos.append(info)
@@ -377,47 +370,6 @@ def quaternion_yaw_scipy(q: Quaternion) -> float:
     q_scipy = quat_argo2scipy(q_argo)
     yaw, _, _ = Rotation.from_quat(q_scipy).as_euler('zyx')
     return yaw
-
-
-def test_quaternion_yaw_scipy():
-    """ """
-    q = Quaternion(-0.10293980572965565, -0.003318673306337732, -0.00041304817784475515, 0.994681965351252)
-
-    old_yaw = quaternion_yaw(copy.deepcopy(q))
-    scipy_yaw = quaternion_yaw_scipy(copy.deepcopy(q))
-
-    yaw_gt = -2.9353469986645324
-    assert np.isclose(old_yaw, yaw_gt)
-    assert np.isclose(scipy_yaw, yaw_gt)
-
-
-
-def _get_available_scenes(nusc):
-    available_scenes = []
-    print("total scene num:", len(nusc.scene))
-    for scene in nusc.scene:
-        scene_token = scene["token"]
-        scene_rec = nusc.get("scene", scene_token)
-        sample_rec = nusc.get("sample", scene_rec["first_sample_token"])
-        sd_rec = nusc.get("sample_data", sample_rec["data"]["LIDAR_TOP"])
-        has_more_frames = True
-        scene_not_exist = False
-        while has_more_frames:
-            lidar_path, boxes, _ = nusc.get_sample_data(sd_rec["token"])
-            if not Path(lidar_path).exists():
-                scene_not_exist = True
-                break
-            else:
-                break
-            if not sd_rec["next"] == "":
-                sd_rec = nusc.get("sample_data", sd_rec["next"])
-            else:
-                has_more_frames = False
-        if scene_not_exist:
-            continue
-        available_scenes.append(scene)
-    print("exist scene num:", len(available_scenes))
-    return available_scenes
 
 
 def create_argoverse_infos(
@@ -464,6 +416,6 @@ if __name__ == "__main__":
     #ARGOVERSE_DATASET_ROOT = "data/argoverse"
     ARGOVERSE_DATASET_ROOT = '/srv/share/cliu324/argoverse-tracking-readonly'
     create_argoverse_infos(
-        root_path=ARGOVERSE_DATASET_ROOT, nsweeps=10
+        root_path=ARGOVERSE_DATASET_ROOT, nsweeps=5 # not using 10 for Argoverse
     )
 
