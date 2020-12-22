@@ -447,7 +447,8 @@ def main():
                 {token: output,}
             )
             detections[token]["annos"] = data_batch["annos"]
-        break
+        if i > 100:
+            break
 
     all_predictions = detections
 
