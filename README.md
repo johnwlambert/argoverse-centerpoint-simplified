@@ -1,5 +1,6 @@
 # argoverse-centerpoint-simplified
 
+Mayavi Environment: https://github.com/mne-tools/mne-python/blob/master/environment.yml
 
 ## Bug Fixed addressed
 
