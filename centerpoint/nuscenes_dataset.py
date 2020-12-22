@@ -240,6 +240,7 @@ class NuScenesDataset(PointCloudDataset):
                 "image_prefix": self._root_path,
                 "num_point_features": self._num_point_features,
                 "token": info["token"],
+                "lidar_fpath": info["sample"]["lidar_path"]
             },
             "calib": None,
             "cam": {},
