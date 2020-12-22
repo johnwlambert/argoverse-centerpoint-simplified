@@ -317,7 +317,7 @@ def build_dataset(cfg, default_args=None):
 
     nsweeps = 5
     dataset = NuScenesDataset(
-        info_path = 'data/argoverse/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
+        info_path = f'data/argoverse/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
         root_path = 'data/argoverse/v1.0-test',
         test_mode = True,
         class_names = [
@@ -333,7 +333,7 @@ def build_dataset(cfg, default_args=None):
             'traffic_cone'
         ],
         nsweeps = nsweeps,
-        ann_file = 'data/argoverse/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
+        ann_file = f'data/argoverse/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
         pipeline = pipeline
     )
 
