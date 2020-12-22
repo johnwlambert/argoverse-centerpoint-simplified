@@ -317,7 +317,7 @@ def visualize_nuscenes_detections():
     for token, sweep_output in pkl_data.items():
         print(token)
         pdb.set_trace()
-        lidar_path = ""
+        lidar_path = sweep_output['metadata']['lidar_fpath']
         points = read_file(lidar_path)
         
         visual(points.T, gt_anno=None, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
