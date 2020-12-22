@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
+from argoverse.utils.pkl_utils import save_pkl_dictionary
 from argoverse.utils.se3 import SE3
 from argoverse.utils.transform import quat2rotmat, quat_argo2scipy
-from tqdm import tqdm
 from pyquaternion import Quaternion
 from scipy.spatial.transform import Rotation
 
@@ -25,59 +25,29 @@ except:
 from argoverse.data_loading.simple_track_dataloader import SimpleArgoverseTrackingDataLoader
 from argoverse.utils.calibration import get_calibration_config
 
-"""
-{
-'token': '2a1710d55ac747339eae4502565b956b',
-'timestamp': 1542799673198229,
-'prev': 'b6cf1af09fc54c79b0d1402e346b8514',
-'next': '184274eb68f24cb9bdb06f90d5728413',
-'scene_token': '0dae482684ce4cd69a7258f55bc98d73',
-'data': {
-    'RADAR_FRONT': 'ef276fd2117d49c8baae43909579bec8',
-    'RADAR_FRONT_LEFT': '010081c456d543379dc2fd62fc47ced8',
-    'RADAR_FRONT_RIGHT': 'bea3a1f01d63421e8be89019b66fd75d',
-    'RADAR_BACK_LEFT': '302918a3fba3472dacec20691b13b090',
-    'RADAR_BACK_RIGHT': '8214182bfd304d6da8372611baaa4946',
-    'LIDAR_TOP': 'ccccfc743caf4039aa2693bfc364c822',
-    'CAM_FRONT': '01c5b74bfdb84508ba4252a0b451a96d',
-    'CAM_FRONT_RIGHT': '802acc61bbc941749cf19799c4581896',
-    'CAM_BACK_RIGHT': '2878dae393fd4de4b2d593e2c34902a9',
-    'CAM_BACK': '8979ae5848c84f75bce4e9410998e7d6',
-    'CAM_BACK_LEFT': '508eaea1e8a8475eae94fa49bfa11f88',
-    'CAM_FRONT_LEFT': '64c634b2012143beaebaa24c6922e0fb'
-    }, 'anns': [
-        '345d75498f214fc38c87104491fc632a',
-        'dbaa05ce77ff4682aaef46a767f6e36b',
-        '390b5dd89f2d43dd83dce93e554cc788',
-        '57e4dc42ef6b4f9ba042f194f22d7fc0'
-    ]},
-"""
 
-general_to_detection = {
-    "human.pedestrian.adult": "pedestrian",
-    "human.pedestrian.child": "pedestrian",
-    "human.pedestrian.wheelchair": "ignore",
-    "human.pedestrian.stroller": "ignore",
-    "human.pedestrian.personal_mobility": "ignore",
-    "human.pedestrian.police_officer": "pedestrian",
-    "human.pedestrian.construction_worker": "pedestrian",
-    "animal": "ignore",
-    "vehicle.car": "car",
-    "vehicle.motorcycle": "motorcycle",
-    "vehicle.bicycle": "bicycle",
-    "vehicle.bus.bendy": "bus",
-    "vehicle.bus.rigid": "bus",
-    "vehicle.truck": "truck",
-    "vehicle.construction": "construction_vehicle",
-    "vehicle.emergency.ambulance": "ignore",
-    "vehicle.emergency.police": "ignore",
-    "vehicle.trailer": "trailer",
-    "movable_object.barrier": "barrier",
-    "movable_object.trafficcone": "traffic_cone",
-    "movable_object.pushable_pullable": "ignore",
-    "movable_object.debris": "ignore",
-    "static_object.bicycle_rack": "ignore",
+
+
+# equivalent of `general_to_detection` dict
+argoverse_name_to_nuscenes_name = {
+    'VEHICLE': 'car',
+    'ON_ROAD_OBSTACLE': 'ignore', # or 'traffic_cone' ?
+    'TRAILER': 'trailer',
+    'BUS': 'bus',
+    'LARGE_VEHICLE': 'vehicle', # or 'truck'?
+    'EMERGENCY_VEHICLE': 'ignore',
+    'MOTORCYCLE': 'motorcycle',
+    'BICYCLE': 'bicycle',
+    'PEDESTRIAN': 'pedestrian',
+    'BICYCLIST': 'pedestrian', # check if right?
+    'MOTORCYCLIST': 'pedestrian', # check if right?
+    'ANIMAL': 'ignore',
+    'UNKNOWN': 'ignore',
+    'OTHER_MOVER': 'ignore',
+    'MOPED':  'motorcycle',
+    'STROLLER': 'ignore'
 }
+
 
 
 def rotmat2quat(R: np.ndarray) -> np.ndarray:
@@ -99,23 +69,6 @@ def test_rotmat2quat():
     q = rotmat2quat(R)
     R_result = quat2rotmat(q)
     assert np.allclose(R, R_result)
-
-
-
-# equivalent of `general_to_detection` dict
-argoverse_name_to_nuscenes_name = {
-    'VEHICLE': 'car',
-    'ON_ROAD_OBSTACLE': 'ignore', # or 'traffic_cone' ?
-    'TRAILER': 'trailer',
-    'BUS': 'bus',
-    'LARGE_VEHICLE': 'vehicle', # or 'truck'?
-    'EMERGENCY_VEHICLE': 'ignore',
-    'MOTORCYCLE': 'motorcycle',
-    'BICYCLE': 'bicycle',
-    'PEDESTRIAN': 'pedestrian',
-    'ANIMAL': 'ignore',
-    'UNKNOWN': 'ignore'
-}
 
 
 def construct_argoverse_boxes_lidarfr(sweep_labels: List[Dict[str,Any]], lidar_SE3_egovehicle: SE3):
@@ -201,41 +154,37 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
             lidart0_SE3_egot0 = egovehicle_SE3_lidar.inverse()
 
             num_log_sweeps = len(log_ply_fpaths)
-            for sample_idx, ply_fpath in enumerate(log_ply_fpaths):
-                print(f'On {sample_idx}/{num_log_sweeps}')
+            for sample_idx, sample_ply_fpath in enumerate(log_ply_fpaths):
+                print(f'\tOn {sample_idx}/{num_log_sweeps}')
 
                 if sample_idx > 5:
                     break
 
-                is_first_log_sweep = sample_idx == 0
-                is_last_log_sweep = sample_idx == num_log_sweeps - 1
+                sample_lidar_timestamp = int(Path(sample_ply_fpath).stem.split('_')[-1])
 
-                lidar_timestamp = int(Path(ply_fpath).stem.split('_')[-1])
-
-                city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, lidar_timestamp)
+                city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, sample_lidar_timestamp)
                 egot0_SE3_city = city_SE3_egot0.inverse()
 
-                sweep_labels = dl.get_labels_at_lidar_timestamp(log_id, lidar_timestamp)
+                sweep_labels = dl.get_labels_at_lidar_timestamp(log_id, sample_lidar_timestamp)
 
                 # nuscenes timestamps are in microseconds
-                ref_time_microseconds = lidar_timestamp * 1e-6
+                ref_time_microseconds = sample_lidar_timestamp * 1e-6
                 ref_time = ref_time_microseconds
-                ref_lidar_path = ply_fpath
+                ref_lidar_path = sample_ply_fpath
 
                 ref_boxes = construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0)
-                pdb.set_trace()
 
                 ref_cam_path = dl.get_closest_im_fpath(
                     log_id,
                     camera_name='ring_front_center',
-                    lidar_timestamp=lidar_timestamp
+                    lidar_timestamp=sample_lidar_timestamp
                 )
 
                 info = {
                     "lidar_path": ref_lidar_path,
                     "cam_front_path": ref_cam_path,
                     "cam_intrinsic": ref_cam_intrinsic,
-                    "token": lidar_timestamp,
+                    "token": sample_lidar_timestamp,
                     "sweeps": [],
                     "ref_from_car": lidart0_SE3_egot0.transform_matrix,
                     "car_from_global": egot0_SE3_city.transform_matrix,
@@ -243,71 +192,44 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 }
 
                 sweeps = []
-                # should be 9 sweeps for each 1 sample
+                # should be 9 sweeps for each 1 sample if nsweeps = 10
 
-                while len(sweeps) < nsweeps - 1:
+                sweep_idxs = np.arange(sample_idx - nsweeps + 1, sample_idx)
+
+                # if there are no samples before, just pad with the same sample
+                sweep_idxs = np.clip(sweep_idxs, a_min=0, a_max=sample_idx - 1)
+
+                for sweep_idx in sweep_idxs:
+
+                    sweep_ply_fpath = log_ply_fpaths[sweep_idx]
+                    sweep_lidar_timestamp = int(Path(sweep_ply_fpath).stem.split('_')[-1])
+                    # nuscenes timestamps are in microseconds, must convert!
+                    curr_time_microseconds = sweep_lidar_timestamp * 1e-6
+                    time_lag = ref_time_microseconds - curr_time_microseconds
+                    if sweep_idx == sample_idx:
+                        assert time_lag == 0
+
+                    city_SE3_egoti = dl.get_city_SE3_egovehicle(log_id, sweep_lidar_timestamp)
+                    egoti_SE3_lidarti = egovehicle_SE3_lidar # calibration is fixed!
+
+                    lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
                     
+                    sweep = {
+                        "lidar_path": sweep_ply_fpath,
+                        "sample_data_token": sweep_lidar_timestamp,
+                        "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
+                        "global_from_car": city_SE3_egoti.transform_matrix,
+                        "car_from_current": egoti_SE3_lidarti.transform_matrix,
+                        "time_lag": time_lag,
+                    }
+                    sweeps.append(sweep)
 
-                    if is_first_log_sweep or is_last_log_sweep:
-                        # if there are no samples before, just pad with the same sample
-                        if len(sweeps) == 0:
-                            sweep = {
-                                "lidar_path": ref_lidar_path,
-                                "sample_data_token": lidar_timestamp,
-                                "transform_matrix": None,
-                                "time_lag": 0
-                            }
-                            sweeps.append(sweep)
-                        else:
-                            sweeps.append(sweeps[-1])
-                    else:
-                        pdb.set_trace()
-                        # accumulate the 9 prior sweeps
-                        curr_sd_rec = nusc.get("sample_data", curr_sd_rec["prev"])
-
-                        # Get past pose
-                        current_pose_rec = nusc.get("ego_pose", curr_sd_rec["ego_pose_token"])
-
-                        city_SE3_egoti = SE3(
-                            rotation=quat2rotmat(current_pose_rec["rotation"]),
-                            translation=np.array(current_pose_rec["translation"])
-                        )
-
-                        # Homogeneous transformation matrix from sensor coordinate frame to ego car frame.
-                        current_cs_rec = nusc.get(
-                            "calibrated_sensor", curr_sd_rec["calibrated_sensor_token"]
-                        )
-                        egoti_SE3_lidarti = SE3(
-                            rotation=quat2rotmat(current_cs_rec["rotation"]),
-                            translation=np.array(current_cs_rec["translation"])
-                        )
-
-                        lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
-                        lidar_path = nusc.get_sample_data_path(curr_sd_rec["token"])
-
-                        time_lag = ref_time - 1e-6 * curr_sd_rec["timestamp"]
-
-                        if 'n015-2018-08-02-17-16-37+0800__LIDAR_TOP__1533201470898274' in lidar_path:
-                            # trainval example "transform_matrix"
-                            expected_tm = np.array(
-                                [
-                                    [1, 0, 0, 0],
-                                    [0, 1, 0, 0.001],
-                                    [0, 0, 1, 0],
-                                    [0, 0, 0, 1]
-                                ])
-                            assert np.allclose(expected_tm, lidart0_SE3_lidarti.transform_matrix, atol=1e-2)
-
-
-                        sweep = {
-                            "lidar_path": lidar_path,
-                            "sample_data_token": curr_sd_rec["token"],
-                            "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
-                            "global_from_car": city_SE3_egoti.transform_matrix,
-                            "car_from_current": egoti_SE3_lidarti.transform_matrix,
-                            "time_lag": time_lag,
-                        }
-                        sweeps.append(sweep)
+                    # sweep = {
+                    #     "lidar_path": ref_lidar_path,
+                    #     "sample_data_token": lidar_timestamp,
+                    #     "transform_matrix": None,
+                    #     "time_lag": 0
+                    # }
 
                 info["sweeps"] = sweeps
 
@@ -317,7 +239,6 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
                 # save the annotations if we are looking at train/val log
                 if not test:
-                    pdb.set_trace()
 
                     num_gt_boxes = len(ref_boxes)
                     mask = np.ones(num_gt_boxes, dtype=bool).reshape(-1) # assume all are visible
@@ -339,12 +260,12 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                     if not filter_zero:
                         info["gt_boxes"] = gt_boxes
                         info["gt_boxes_velocity"] = velocity
-                        info["gt_names"] = np.array([names]) # already ran `general_to_detection` conversion previously
+                        info["gt_names"] = np.array(names) # already ran `general_to_detection` conversion previously
                         info["gt_boxes_token"] = tokens
                     else:
                         info["gt_boxes"] = gt_boxes[mask, :]
                         info["gt_boxes_velocity"] = velocity[mask, :]
-                        info["gt_names"] = np.array([names])[mask] # already ran `general_to_detection` conversion previously
+                        info["gt_names"] = np.array(names)[mask] # already ran `general_to_detection` conversion previously
                         info["gt_boxes_token"] = tokens[mask]
 
                 split_argoverse_infos.append(info)
@@ -386,12 +307,13 @@ def create_argoverse_infos(
     save_path = "data/argoverse"
 
     for split in ['train', 'val', 'test']:
+        print(f'Preparing split {split}')
         split_argoverse_infos = _fill_trainval_infos(split, root_path, nsweeps=nsweeps, filter_zero=filter_zero)
 
         if split in ['train', 'val']:
-            pkl_fpath = save_path / f"infos_{split}_{nsweeps:02d}sweeps_withvelo_filter_{filter_zero}.pkl"
+            pkl_fpath = f'{save_path}/infos_{split}_{nsweeps:02d}sweeps_withvelo_filter_{filter_zero}.pkl'
         else:
-            pkl_fpath = save_path / f"infos_{split}_{nsweeps:02d}sweeps_withvelo.pkl"
+            pkl_fpath = f'{save_path}/infos_{split}_{nsweeps:02d}sweeps_withvelo.pkl'
         
         print(f"{split} sample: {len(split_argoverse_infos)}")
         save_pkl_dictionary(pkl_fpath, split_argoverse_infos)
