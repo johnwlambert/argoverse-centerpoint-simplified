@@ -281,7 +281,7 @@ def main():
     pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
     pkl_data = load_pkl_dictionary(pkl_fpath)
     
-    argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val'
+    argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
     
     for token, sweep_output in pkl_data.items():
         pdb.set_trace()
