@@ -283,7 +283,7 @@ def main():
     
     for token, sweep_output in pkl_data.items():
         pdb.set_trace()
-        lidar_fpath = sweep_output["token"]
+        lidar_fpath = sweep_output['metadata']["token"]
         points = read_file(lidar_fpath)[:,:3]
         calibration_fpath = 'vehicle_calibration_info.json'
         calib_data = read_json_file(calibration_fpath)
