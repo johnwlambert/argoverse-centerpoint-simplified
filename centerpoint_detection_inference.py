@@ -329,7 +329,7 @@ def build_dataset(cfg, default_args=None):
                 })
             ),
             Reformat(double_flip=True)
-        ]
+        ])
     
     dataset = NuScenesDataset(
         info_path = info_path,
