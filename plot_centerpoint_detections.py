@@ -232,14 +232,14 @@ def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     colors = np.minimum(1, dists / eval_range)
     ax.scatter(points[0, :], points[1, :], c=colors, s=0.2)
 
-    boxes_gt = _second_det_to_nusc_box(gt_anno)
+    if gt_anno is not None:
+        boxes_gt = _second_det_to_nusc_box(gt_anno)
     boxes_est = _second_det_to_nusc_box(det)
 
-    # Show GT boxes.
-    for box in boxes_gt:
-        render_nuscenes_box(
-            box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2
-        )
+    if gt_anno is not None:
+        # Show GT boxes.
+        for box in boxes_gt:
+            render_nuscenes_box(box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2)
 
     # Show EST boxes.
     for box in boxes_est:
@@ -275,7 +275,7 @@ def read_file(path, tries=2, num_point_feature=4):
     return points
 
     
-def main():
+def visualize_argoverse_detections():
     """ """
     #pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
     pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
@@ -309,8 +309,22 @@ def main():
         }
         visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
     
+def visualize_nuscenes_detections():
+    """ """
+    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
+    pkl_data = load_pkl_dictionary(pkl_fpath)
+    
+    for token, sweep_output in pkl_data.items():
+        print(token)
+        pdb.set_trace()
+        lidar_path = ""
+        points = read_file(lidar_path)
+        
+        visual(points.T, gt_anno=None, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
+    
     
     
 
 if __name__ == "__main__":
-    main()
+    #visualize_argoverse_detections()
+    visualize_nuscenes_detections()
