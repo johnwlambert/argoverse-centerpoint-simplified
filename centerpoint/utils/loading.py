@@ -9,6 +9,8 @@ import numpy as np
 import os
 import pyntcloud
 
+from argoverse.utils.pkl_utils import save_pkl_dictionary
+
 
 
 def load_ply_xyzir(ply_fpath: str) -> np.ndarray:
@@ -166,10 +168,13 @@ class LoadPointCloudFromFile(object):
         if self.type == "NuScenesDataset":
 
             nsweeps = res["lidar"]["nsweeps"]
+            
+            sample_info = info["sample"]
+            points = read_sweep(sample_info)
 
-            lidar_path = Path(info["lidar_path"])
+            #lidar_path = Path(sa,linfo["lidar_path"])
             # load (34720, 4) point cloud
-            points = read_file(str(lidar_path))
+            #points = read_file(str(lidar_path))
 
             sweep_points_list = [points]
             sweep_times_list = [np.zeros((points.shape[0], 1))]
@@ -189,6 +194,10 @@ class LoadPointCloudFromFile(object):
             # concat length-10 list, e.g. get (277783, 4) array
             points = np.concatenate(sweep_points_list, axis=0)
             times = np.concatenate(sweep_times_list, axis=0).astype(points.dtype)
+            
+            token = res['metadata']['token'].replace('/', '_')
+            save_fpath = f'pkl/{token}.pkl'
+            save_pkl_dictionary(save_fpath, { 'sweep_points_list': sweep_points_list })
 
             res["lidar"]["points"] = points
             res["lidar"]["times"] = times
