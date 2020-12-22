@@ -179,6 +179,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 )
 
                 info = {
+                    "transform_matrix": lidart0_SE3_egot0.transform_matrix,
                     "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
                     "cam_front_path": ref_cam_path,
                     "cam_intrinsic": ref_cam_intrinsic,
@@ -210,12 +211,12 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                     city_SE3_egoti = dl.get_city_SE3_egovehicle(log_id, sweep_lidar_timestamp)
                     egoti_SE3_lidarti = egovehicle_SE3_lidar # calibration is fixed!
 
-                    lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
+                    lidart0_SE3_egoti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti)
                     
                     sweep = {
                         "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sweep_ply_fpath).name}',
                         "sample_data_token": f'{log_id}/lidar/PC_{sweep_lidar_timestamp}.ply',
-                        "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
+                        "transform_matrix": lidart0_SE3_egoti.transform_matrix,
                         "global_from_car": city_SE3_egoti.transform_matrix,
                         "car_from_current": egoti_SE3_lidarti.transform_matrix,
                         "time_lag": time_lag,
