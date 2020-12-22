@@ -426,6 +426,7 @@ def main():
                 model, data_batch, train_mode=False, local_rank=args.local_rank,
             )
         for output in outputs:
+            
             # `output` is a dictionary with keys
             # dict_keys(['box3d_lidar', 'scores', 'label_preds', 'metadata'])
             # box3d_lidar is a tensor of shape [217, 9]
@@ -437,6 +438,7 @@ def main():
             #     'token': '3c61eda50f694585bac0614e4660eca1'
             #    }
             token = output["metadata"]["token"]
+            detections[token] = data_batch["annos"]
             for k, v in output.items():
                 if k not in ["metadata"]:
                     output[k] = v.to(cpu_device)
