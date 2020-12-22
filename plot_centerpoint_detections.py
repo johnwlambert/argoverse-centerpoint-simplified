@@ -13,7 +13,7 @@ from argoverse.utils.se3 import SE3
 from argoverse.utils.json_utils import read_json_file
 from argoverse.utils.transform import quat2rotmat
 
-from centerpoint.utils.loading import read_file
+from centerpoint.utils.loading import read_file, load_ply_xyzir
 
 nuscenes_class_names = [
     'car',
@@ -284,11 +284,10 @@ def main():
     argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
     
     for token, sweep_output in pkl_data.items():
-        pdb.set_trace()
         lidar_subpath = sweep_output['metadata']["token"]
         log_id = lidar_subpath.split('/')[0]
         lidar_fpath = f'{argoverse_root}/{lidar_subpath}'
-        points = read_file(lidar_fpath)[:,:3]
+        points = load_ply_xyzir(lidar_fpath)[:,:3]
         calibration_fpath = f'{argoverse_root}/{log_id}/vehicle_calibration_info.json'
         calib_data = read_json_file(calibration_fpath)
         egovehicle_SE3_lidar = SE3(
