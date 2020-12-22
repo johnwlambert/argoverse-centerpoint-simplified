@@ -155,10 +155,8 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
             num_log_sweeps = len(log_ply_fpaths)
             for sample_idx, sample_ply_fpath in enumerate(log_ply_fpaths):
-                print(f'\tOn {sample_idx}/{num_log_sweeps}')
-
-                if sample_idx > 5:
-                    break
+                if sample_idx % 100 == 0:
+                    print(f'\t{log_id}: On {sample_idx}/{num_log_sweeps}')
 
                 sample_lidar_timestamp = int(Path(sample_ply_fpath).stem.split('_')[-1])
 
@@ -181,7 +179,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 )
 
                 info = {
-                    "lidar_path": ref_lidar_path,
+                    "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
                     "cam_front_path": ref_cam_path,
                     "cam_intrinsic": ref_cam_intrinsic,
                     "token": sample_lidar_timestamp,
@@ -215,7 +213,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                     lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
                     
                     sweep = {
-                        "lidar_path": sweep_ply_fpath,
+                        "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sweep_ply_fpath).name}'
                         "sample_data_token": sweep_lidar_timestamp,
                         "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
                         "global_from_car": city_SE3_egoti.transform_matrix,
@@ -306,7 +304,7 @@ def create_argoverse_infos(
     """ """
     save_path = "data/argoverse"
 
-    for split in ['train', 'val', 'test']:
+    for split in ['val', 'test', 'train']:
         print(f'Preparing split {split}')
         split_argoverse_infos = _fill_trainval_infos(split, root_path, nsweeps=nsweeps, filter_zero=filter_zero)
 
