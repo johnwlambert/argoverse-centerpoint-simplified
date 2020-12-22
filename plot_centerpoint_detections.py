@@ -299,7 +299,7 @@ def main():
         gt_obj_classnames = gt_anno[0]['names']
         gt_obj_classnames = [ 'barrier' if name in ['vehicle','ignore'] else name for name in gt_obj_classnames]
         annos = {
-            'box3d_lidar': gt_anno[0]['boxes']
+            'box3d_lidar': gt_anno[0]['boxes'],
             'scores': np.ones(num_boxes),
             'label_preds': [ nuscenes_class_names.index(name) for name in gt_obj_classnames]
         }
