@@ -315,9 +315,10 @@ def build_dataset(cfg, default_args=None):
 
 
 
+    nsweeps = 5
     dataset = NuScenesDataset(
-        info_path = 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
-        root_path = 'data/nuScenes/v1.0-test',
+        info_path = 'data/argoverse/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
+        root_path = 'data/argoverse/v1.0-test',
         test_mode = True,
         class_names = [
             'car',
@@ -331,8 +332,8 @@ def build_dataset(cfg, default_args=None):
             'pedestrian',
             'traffic_cone'
         ],
-        nsweeps = 10,
-        ann_file = 'data/nuScenes/infos_val_10sweeps_withvelo_filter_True.pkl',
+        nsweeps = nsweeps,
+        ann_file = 'data/argoverse/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
         pipeline = pipeline
     )
 
@@ -445,6 +446,7 @@ def main():
             detections.update(
                 {token: output,}
             )
+            detections[token]["annos"] = data_batch["annos"]
         break
 
     all_predictions = detections
