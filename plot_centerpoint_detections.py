@@ -9,8 +9,11 @@ from matplotlib.axes import Axes
 from pyquaternion import Quaternion
 
 from argoverse.utils.pkl_utils import load_pkl_dictionary
+from argoverse.utils.se3 import SE3
+from argoverse.utils.json_utils import read_json_file
+from argoverse.utils.transform import quat2rotmat
 
-
+from centerpoint.utils.loading import read_file
 
 nuscenes_class_names = [
     'car',
@@ -219,6 +222,8 @@ def _second_det_to_nusc_box(detection):
 
 def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     """ """
+    token = det['metadata']['token'].replace('/', '_')
+    
     _, ax = plt.subplots(1, 1, figsize=(9, 9), dpi=200)
     #points = remove_close(points, radius=3)
     #points = view_points(points[:3, :], np.eye(4), normalize=False)
@@ -230,11 +235,11 @@ def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     #boxes_gt = _second_det_to_nusc_box(gt_anno)
     boxes_est = _second_det_to_nusc_box(det)
 
-#     # Show GT boxes.
-#     for box in boxes_gt:
-#         render_nuscenes_box(
-#             box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2
-#         )
+    # Show GT boxes.
+    for box in boxes_gt:
+        render_nuscenes_box(
+            box, ax, view=np.eye(4), colors=("r", "r", "r"), linewidth=2
+        )
 
     # Show EST boxes.
     for box in boxes_est:
@@ -250,7 +255,7 @@ def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     ax.set_ylim(-axes_limit, axes_limit)
     plt.axis("off")
 
-    plt.savefig("demo/file%02d.png" % i)
+    plt.savefig("demo/{token}_file%02d.png" % i)
     plt.close()
 
 def read_file(path, tries=2, num_point_feature=4):
@@ -272,26 +277,33 @@ def read_file(path, tries=2, num_point_feature=4):
     
 def main():
     """ """
-    pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
+    #pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
+    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset"
     pkl_data = load_pkl_dictionary(pkl_fpath)
     
-    keys = list(pkl_data.keys()) # get the tokens
-    token = keys[0]
-    
-    pkl_data[token]['box3d_lidar']
-    pkl_data[token]['scores']
-    pkl_data[token]['label_preds']
-    pkl_data[token]['metadata']
-    
-    pdb.set_trace()
-    
-    lidar_fpath = glob.glob('/Users/jlambert/Downloads/n015*229.pcd.bin')[0]
-    from centerpoint.utils.loading import read_file
-    points = read_file(lidar_fpath)
-    
-    from nuscenes_2a1710d55ac747339eae4502565b956b_python import annos
-    
-    visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=35, conf_th=0.5)
+    for token, sweep_output in pkl_data.items():
+        pdb.set_trace()
+        lidar_fpath = sweep_output["token"]
+        points = read_file(lidar_fpath)[:,:3]
+        calibration_fpath = 'vehicle_calibration_info.json'
+        calib_data = read_json_file(calibration_fpath)
+        egovehicle_SE3_lidar = SE3(
+            rotation=quat2rotmat(calib_data["vehicle_SE3_up_lidar_"]["rotation"]["coefficients"])
+            translation=np.array(calib_data["vehicle_SE3_up_lidar_"]["translation"])
+        )
+        lidar_SE3_egovehicle = egovehicle_SE3_lidar.inverse()
+        points = lidar_SE3_egovehicle.transform_point_cloud(points)
+        
+        gt_anno = sweep_output["annos"]
+        num_boxes = len(gt_anno[0]['names'])
+        gt_obj_classnames = gt_anno[0]['names']
+        gt_obj_classnames = [ 'barrier' if name in ['vehicle','ignore'] else name for name in gt_obj_classnames]
+        annos = {
+            'box3d_lidar': gt_anno[0]['boxes']
+            'scores': np.ones(num_boxes),
+            'label_preds': [ nuscenes_class_names.index(name) for name in gt_obj_classnames]
+        }
+        visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
     
     
     
