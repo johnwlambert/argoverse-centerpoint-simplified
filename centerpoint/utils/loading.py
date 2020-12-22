@@ -6,17 +6,47 @@ from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import numpy as np
+import pyntcloud
+
+
+
+def load_ply_xyzir(ply_fpath: str) -> np.ndarray:
+    """Load a point cloud file from a filepath.
+    
+    Args:
+        ply_fpath: Path to a PLY file
+    Returns:
+        arr: Array of shape (N, 5)
+    """
+
+    data = pyntcloud.PyntCloud.from_file(os.fspath(ply_fpath))
+    x = np.array(data.points.x)[:, np.newaxis]
+    y = np.array(data.points.y)[:, np.newaxis]
+    z = np.array(data.points.z)[:, np.newaxis]
+    i = np.array(data.points.intensity)[:, np.newaxis]
+    ring_index = np.array(data.points.laser_number)[:, np.newaxis]
+
+    return np.concatenate((x, y, z, i, ring_index), axis=1)
+
+
 
 def read_file(path, tries=2, num_point_feature=4):
+    """
+    Per https://github.com/nutonomy/nuscenes-devkit/blob/master/python-sdk/nuscenes/utils/data_classes.py#L249
+    intensity is 4th, and laser number is 5th
+    """
     points = None
     try_cnt = 0
     while points is None and try_cnt < tries:
         try_cnt += 1
         try:
-            points = np.fromfile(path, dtype=np.float32)
-            s = points.shape[0]
-            if s % 5 != 0:
-                points = points[: s - (s % 5)]
+            if 'ply' in path:
+                points = load_ply_xyzir(path) 
+            else:
+                points = np.fromfile(path, dtype=np.float32)
+                s = points.shape[0]
+                if s % 5 != 0:
+                    points = points[: s - (s % 5)]
             points = points.reshape(-1, 5)[:, :num_point_feature]
         except Exception:
             points = None
