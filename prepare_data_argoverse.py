@@ -328,7 +328,8 @@ def create_argoverse_infos(
 if __name__ == "__main__":
     """ """
     #ARGOVERSE_DATASET_ROOT = "data/argoverse"
-    ARGOVERSE_DATASET_ROOT = '/srv/share/cliu324/argoverse-tracking-readonly'
+    ARGOVERSE_DATASET_ROOT = '/home/ubuntu/argoverse/argoverse-tracking'
+    #ARGOVERSE_DATASET_ROOT = '/srv/share/cliu324/argoverse-tracking-readonly'
     create_argoverse_infos(
         root_path=ARGOVERSE_DATASET_ROOT, nsweeps=5 # not using 10 for Argoverse
     )
