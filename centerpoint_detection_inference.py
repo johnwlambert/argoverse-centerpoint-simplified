@@ -269,9 +269,9 @@ def build_dataset(cfg, default_args=None):
 
     from centerpoint.nuscenes_dataset import NuScenesDataset
     
-    nsweeps = 5 # 10
-    dataset_name = 'argoverse' # 'nuScenes'
-    split = 'val'
+    nsweeps = 10 # 5 # 
+    dataset_name = 'nuScenes' # 'argoverse' # 
+    split = 'test' # 'val'
 
     pipeline = [
             LoadPointCloudFromFile(dataset = 'NuScenesDataset')
@@ -279,6 +279,7 @@ def build_dataset(cfg, default_args=None):
     if split != 'test':
         # only relevant for train or val
         pipeline += [LoadPointCloudAnnotations(with_bbox = True)]
+        
     pipeline.extend([
             Preprocess(
                 cfg=SimpleNamespace(**{
@@ -321,8 +322,13 @@ def build_dataset(cfg, default_args=None):
             Reformat(double_flip=True)
         ]
 
+    if split == 'test':
+        info_path = f'data/{dataset_name}/infos_test_{str(nsweeps).zfill(2)}sweeps_withvelo.pkl'
+    else:
+        info_path = f'data/{dataset_name}/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl'
+
     dataset = NuScenesDataset(
-        info_path = f'data/{dataset_name}/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
+        info_path = info_path,
         root_path = f'data/{dataset_name}/v1.0-test',
         test_mode = True,
         class_names = [
@@ -338,7 +344,7 @@ def build_dataset(cfg, default_args=None):
             'traffic_cone'
         ],
         nsweeps = nsweeps,
-        ann_file = f'data/{dataset_name}/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl',
+        ann_file = info_path,
         pipeline = pipeline
     )
 
