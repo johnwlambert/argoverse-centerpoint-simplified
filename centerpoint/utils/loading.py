@@ -170,7 +170,7 @@ class LoadPointCloudFromFile(object):
             nsweeps = res["lidar"]["nsweeps"]
             
             sample_info = info["sample"]
-            points = read_sweep(sample_info)
+            points, _ = read_sweep(sample_info)
 
             #lidar_path = Path(sa,linfo["lidar_path"])
             # load (34720, 4) point cloud
