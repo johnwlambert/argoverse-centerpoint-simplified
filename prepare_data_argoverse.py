@@ -182,7 +182,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                     "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
                     "cam_front_path": ref_cam_path,
                     "cam_intrinsic": ref_cam_intrinsic,
-                    "token": sample_lidar_timestamp,
+                    "token": f'{log_id}/lidar/PC_{sample_lidar_timestamp}.ply',
                     "sweeps": [],
                     "ref_from_car": lidart0_SE3_egot0.transform_matrix,
                     "car_from_global": egot0_SE3_city.transform_matrix,
@@ -214,7 +214,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                     
                     sweep = {
                         "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sweep_ply_fpath).name}',
-                        "sample_data_token": sweep_lidar_timestamp,
+                        "sample_data_token": f'{log_id}/lidar/PC_{sweep_lidar_timestamp}.ply',
                         "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
                         "global_from_car": city_SE3_egoti.transform_matrix,
                         "car_from_current": egoti_SE3_lidarti.transform_matrix,
