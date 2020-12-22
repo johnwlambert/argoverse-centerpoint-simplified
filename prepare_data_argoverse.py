@@ -197,6 +197,12 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
                 # if there are no samples before, just pad with the same sample
                 sweep_idxs = np.clip(sweep_idxs, a_min=0, a_max=sample_idx - 1)
+                
+                info["sample"] = {
+                    "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
+                    "transform_matrix": lidart0_SE3_egot0.transform_matrix,
+                    "time_lag" : 0
+                }
 
                 for sweep_idx in sweep_idxs:
 
