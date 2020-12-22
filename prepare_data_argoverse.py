@@ -124,8 +124,8 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
     split_subdirs_map = {
         'train': ['train1', 'train2', 'train3', 'train4', 'train5'],
-        'val': 'val',
-        'test': 'test'
+        'val': ['val'],
+        'test': ['test']
     }
     split_subdirs = split_subdirs_map[split]
 
@@ -213,7 +213,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                     lidart0_SE3_lidarti = lidart0_SE3_egot0.compose(egot0_SE3_city).compose(city_SE3_egoti).compose(egoti_SE3_lidarti)
                     
                     sweep = {
-                        "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sweep_ply_fpath).name}'
+                        "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sweep_ply_fpath).name}',
                         "sample_data_token": sweep_lidar_timestamp,
                         "transform_matrix": lidart0_SE3_lidarti.transform_matrix,
                         "global_from_car": city_SE3_egoti.transform_matrix,
