@@ -278,7 +278,7 @@ def read_file(path, tries=2, num_point_feature=4):
 def main():
     """ """
     #pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
-    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset"
+    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
     pkl_data = load_pkl_dictionary(pkl_fpath)
     
     for token, sweep_output in pkl_data.items():
