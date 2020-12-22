@@ -284,6 +284,7 @@ def main():
     argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
     
     for token, sweep_output in pkl_data.items():
+        print(token)
         lidar_subpath = sweep_output['metadata']["token"]
         log_id = lidar_subpath.split('/')[0]
         lidar_fpath = f'{argoverse_root}/{lidar_subpath}'
