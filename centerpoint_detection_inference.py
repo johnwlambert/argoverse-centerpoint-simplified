@@ -272,6 +272,11 @@ def build_dataset(cfg, default_args=None):
     nsweeps = 10 # 5 # 
     dataset_name = 'nuScenes' # 'argoverse' # 
     split = 'test' # 'val'
+    
+    if split == 'test':
+        info_path = f'data/{dataset_name}/infos_test_{str(nsweeps).zfill(2)}sweeps_withvelo.pkl'
+    else:
+        info_path = f'data/{dataset_name}/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl'
 
     pipeline = [
             LoadPointCloudFromFile(dataset = 'NuScenesDataset')
@@ -279,6 +284,10 @@ def build_dataset(cfg, default_args=None):
     if split != 'test':
         # only relevant for train or val
         pipeline += [LoadPointCloudAnnotations(with_bbox = True)]
+        
+        
+        
+        
         
     pipeline.extend([
             Preprocess(
@@ -321,12 +330,7 @@ def build_dataset(cfg, default_args=None):
             ),
             Reformat(double_flip=True)
         ]
-
-    if split == 'test':
-        info_path = f'data/{dataset_name}/infos_test_{str(nsweeps).zfill(2)}sweeps_withvelo.pkl'
-    else:
-        info_path = f'data/{dataset_name}/infos_val_{str(nsweeps).zfill(2)}sweeps_withvelo_filter_True.pkl'
-
+    
     dataset = NuScenesDataset(
         info_path = info_path,
         root_path = f'data/{dataset_name}/v1.0-test',
