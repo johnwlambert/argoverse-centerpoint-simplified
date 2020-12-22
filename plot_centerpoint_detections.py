@@ -281,11 +281,15 @@ def main():
     pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
     pkl_data = load_pkl_dictionary(pkl_fpath)
     
+    argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val'
+    
     for token, sweep_output in pkl_data.items():
         pdb.set_trace()
-        lidar_fpath = sweep_output['metadata']["token"]
+        lidar_subpath = sweep_output['metadata']["token"]
+        log_id = lidar_subpath.split('/')[0]
+        lidar_fpath = f'{argoverse_root}/{lidar_subpath}'
         points = read_file(lidar_fpath)[:,:3]
-        calibration_fpath = 'vehicle_calibration_info.json'
+        calibration_fpath = '{argoverse_root}/{log_id}/vehicle_calibration_info.json'
         calib_data = read_json_file(calibration_fpath)
         egovehicle_SE3_lidar = SE3(
             rotation=quat2rotmat(calib_data["vehicle_SE3_up_lidar_"]["rotation"]["coefficients"]),
