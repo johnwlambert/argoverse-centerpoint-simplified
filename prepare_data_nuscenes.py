@@ -345,7 +345,13 @@ def _fill_trainval_infos(
             "car_from_global": egot0_SE3_city.transform_matrix,
             "timestamp": ref_time,
         }
-
+        
+        info["sample"] = {
+            "lidar_path": ref_lidar_path,
+            "transform_matrix": np.eye(4),
+            "time_lag" : 0
+        }
+        
         sample_data_token = sample["data"][chan]
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
         sweeps = []
