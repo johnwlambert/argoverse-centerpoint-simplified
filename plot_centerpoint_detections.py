@@ -255,7 +255,7 @@ def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     ax.set_ylim(-axes_limit, axes_limit)
     plt.axis("off")
 
-    plt.savefig("demo/{token}_file%02d.png" % i)
+    plt.savefig(f"demo/{token}_file%02d.png" % i)
     plt.close()
 
 def read_file(path, tries=2, num_point_feature=4):
