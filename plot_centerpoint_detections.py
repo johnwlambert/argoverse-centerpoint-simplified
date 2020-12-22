@@ -288,7 +288,7 @@ def main():
         calibration_fpath = 'vehicle_calibration_info.json'
         calib_data = read_json_file(calibration_fpath)
         egovehicle_SE3_lidar = SE3(
-            rotation=quat2rotmat(calib_data["vehicle_SE3_up_lidar_"]["rotation"]["coefficients"])
+            rotation=quat2rotmat(calib_data["vehicle_SE3_up_lidar_"]["rotation"]["coefficients"]),
             translation=np.array(calib_data["vehicle_SE3_up_lidar_"]["translation"])
         )
         lidar_SE3_egovehicle = egovehicle_SE3_lidar.inverse()
