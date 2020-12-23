@@ -1,5 +1,18 @@
 # argoverse-centerpoint-simplified
 
+## Installation
+
+I used Python 3.8.3
+
+**Dependencies**
+- SparseConv (build locally)
+- DCN (build locally), produce deform_conv_cuda.cpython-38-x86_64-linux-gnu.so
+- Iou3dNMS (build locally), produce iou3d_nms_cuda.cpython-38-x86_64-linux-gnu.so
+- Pytorch 1.7.1
+- argoverse-api
+- CUDA 11.0
+
+If you wish to run `viz_aggregated_sweeps.py`, you must run:
 Mayavi Environment: https://github.com/mne-tools/mne-python/blob/master/environment.yml
 
 ## Bug Fixed addressed
