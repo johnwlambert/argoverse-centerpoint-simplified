@@ -132,7 +132,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
     for split_subdir in split_subdirs:
 
         # whether or not is test split
-        test = split == 'test'
+        is_test = split == 'test'
 
         split_root_path = f'{root_path}/{split_subdir}'
         dl = SimpleArgoverseTrackingDataLoader(data_dir=split_root_path, labels_dir=split_root_path)
@@ -170,7 +170,8 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 ref_time = ref_time_seconds
                 ref_lidar_path = sample_ply_fpath
 
-                ref_boxes = construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0)
+                if not is_test:
+                    ref_boxes = construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0)
 
                 ref_cam_path = dl.get_closest_im_fpath(
                     log_id,
@@ -244,7 +245,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 ), f"sweep {curr_sd_rec['token']} only has {len(info['sweeps'])} sweeps, you should duplicate to sweep num {nsweeps-1}"
 
                 # save the annotations if we are looking at train/val log
-                if not test:
+                if not is_test:
 
                     num_gt_boxes = len(ref_boxes)
                     mask = np.ones(num_gt_boxes, dtype=bool).reshape(-1) # assume all are visible
