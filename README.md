@@ -8,9 +8,9 @@ I used Python 3.8.3
 - SparseConv (build locally)
 - DCN (build locally), produce deform_conv_cuda.cpython-38-x86_64-linux-gnu.so
 - Iou3dNMS (build locally), produce iou3d_nms_cuda.cpython-38-x86_64-linux-gnu.so
-- Pytorch 1.7.1
+- Pytorch 1.7.1 (check with `python -c "import torch; print(torch.__version__)"`)
 - argoverse-api
-- CUDA 11.0
+- CUDA 11.0 (check with `python -c "import torch; print(torch.version.cuda)"`)
 
 If you wish to run `viz_aggregated_sweeps.py`, you must run:
 Mayavi Environment: https://github.com/mne-tools/mne-python/blob/master/environment.yml
