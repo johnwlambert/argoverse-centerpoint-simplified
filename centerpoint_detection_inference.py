@@ -428,6 +428,10 @@ def main():
     time_end = 0 
 
     for i, data_batch in enumerate(data_loader):
+        """
+        data_batch will have collated examples
+        so for double flip, get an extra dimension on the outside, indexed with 0, 1, 2, 3 etc for 4 examples
+        """
         print(f'{i}/{len(data_loader)}')
         if i == start:
             torch.cuda.synchronize()
