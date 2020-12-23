@@ -3,6 +3,8 @@ import pickle
 import json
 import random
 import operator
+from typing import Any, Dict
+
 import numpy as np
 
 from functools import reduce
@@ -25,13 +27,17 @@ from centerpoint.nusc_common import (
 )
 
 
-
 class Reformat(object):
     def __init__(self, **kwargs):
         double_flip = kwargs.get('double_flip', False)
         self.double_flip = double_flip 
 
-    def __call__(self, res, info):
+    def __call__(self, res: Dict[str, Any], info: Dict[str, Any]):
+        """
+        
+        Returns:
+            if 'double_flip' mode, return length-4 list of bundled data for each of the mirrored variants
+        """
         meta = res["metadata"]
         points = res["lidar"]["points"]
         voxels = res["lidar"]["voxels"]
