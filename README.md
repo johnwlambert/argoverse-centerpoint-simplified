@@ -58,3 +58,6 @@ array([[ 0.95, -1.  ,  1.83],
   <img src="https://user-images.githubusercontent.com/16724970/102704589-60dcde00-424b-11eb-8997-aff36f705404.jpg" height="400">
 </p>
 
+## Another Option for DCN:
+Pytorch deformable conv: https://pytorch.org/docs/stable/_modules/torchvision/ops/deform_conv.html#deform_conv2d
+
