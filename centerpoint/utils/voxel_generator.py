@@ -90,6 +90,8 @@ class Voxelization(object):
             along y-dim, and then mirrored along both the x- and y-dim.
 
             These are added to the res['lidar'] dictionary
+            
+            Voxel grid is of size e.g. [1440, 1440,   40]
 
         Args:
             res: dictionary with keys
@@ -104,12 +106,22 @@ class Voxelization(object):
                 'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
         
                 info['gt_boxes'] has a shape (N, 9), e.g. N=37
+        
+        Returns:
+            res["lidar"]["voxels"] dictionary with keys
+                  voxels, e.g. shape (58492, 10, 5) array
+                  coordinates, e.g. shape (58492, 3) array
+                  num_points, e.g. shape (58492,) array
+                  num_voxels, e.g. length-1 array like array([58492])
+                  
+            res["lidar"]["yflip_voxels"]
+            res["lidar"]["xflip_voxels"]
+            res["lidar"]["double_flip_voxels"]
         """
         # [0, -40, -3, 70.4, 40, 1]
         voxel_size = self.voxel_generator.voxel_size
         pc_range = self.voxel_generator.point_cloud_range
         grid_size = self.voxel_generator.grid_size
-        # [352, 400]
 
         double_flip = self.double_flip and (res["mode"] != 'train')
 
@@ -121,7 +133,6 @@ class Voxelization(object):
 
             res["lidar"]["annotations"] = gt_dict
 
-        # points = points[:int(points.shape[0] * 0.1), :]
         voxels, coordinates, num_points = self.voxel_generator.generate(
             res["lidar"]["points"]
         )
