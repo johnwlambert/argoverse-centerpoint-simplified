@@ -30,6 +30,11 @@ class DoubleFlip(object):
                 'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
         
                 info['gt_boxes'] has a shape (N, 9), e.g. N=37
+        
+        Returns:
+            res["lidar"]['yflip_points'] set to mirror combined (N,5) array of [x, y, z, intensity, timestamps]
+            res["lidar"]['xflip_points'] as above, mirrored
+            res["lidar"]["double_flip_points"] as above, mirrored
         """
         # y flip
         points = res["lidar"]["points"].copy()
