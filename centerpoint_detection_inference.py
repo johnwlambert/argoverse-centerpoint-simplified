@@ -269,9 +269,9 @@ def build_dataset(cfg, default_args=None):
 
     from centerpoint.nuscenes_dataset import NuScenesDataset
     
-    nsweeps = 10 # 5 # 
-    dataset_name = 'nuScenes' # 'argoverse' # 
-    split = 'test' # 'val'
+    nsweeps = 5 # 10 # 
+    dataset_name = 'argoverse' # 'nuScenes' # 
+    split = 'val' # 'test' # 
     
     if split == 'test':
         info_path = f'data/{dataset_name}/infos_test_{str(nsweeps).zfill(2)}sweeps_withvelo.pkl'
@@ -284,10 +284,6 @@ def build_dataset(cfg, default_args=None):
     if split != 'test':
         # only relevant for train or val
         pipeline += [LoadPointCloudAnnotations(with_bbox = True)]
-        
-        
-        
-        
         
     pipeline.extend([
             Preprocess(
@@ -466,6 +462,9 @@ def main():
                 {token: output,}
             )
             detections[token]["annos"] = data_batch["annos"]
+            # optionally dump the input!
+            # detections[token]["input_coordinates"] = data_batch["coordinates"].to(cpu_device)
+            # detections[token]["input_voxels"] = data_batch["voxels"].to(cpu_device)
         if i > 100:
             break
 
