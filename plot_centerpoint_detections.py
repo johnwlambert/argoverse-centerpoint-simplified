@@ -1,16 +1,19 @@
 
 import glob
+import os
 import pdb
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from pyquaternion import Quaternion
+from scipy.spatial.transform import Rotation
 
+from argoverse.utils.json_utils import read_json_file, save_json_dict
 from argoverse.utils.pkl_utils import load_pkl_dictionary
 from argoverse.utils.se3 import SE3
-from argoverse.utils.json_utils import read_json_file
 from argoverse.utils.transform import quat2rotmat
 
 from centerpoint.utils.loading import read_file, load_ply_xyzir
@@ -27,6 +30,39 @@ nuscenes_class_names = [
     'pedestrian',
     'traffic_cone'
 ]
+
+def get_argo_label(label: str) -> str:
+    """Map the nuscenes labels to argoverse labels"""
+
+    if 'car' in label:
+        return 'VEHICLE'
+
+    if 'truck' in label:
+        return 'VEHICLE' # 'LARGE_VEHICLE'
+
+    if 'construction_vehicle' in label:
+        return 'LARGE_VEHICLE'
+
+    if 'bus' in label:
+        return 'BUS'
+
+    if 'trailer' in label:
+        return 'TRAILER'
+
+    if 'barrier' in label:
+        return 'ON_ROAD_OBSTACLE'
+
+    if 'motorcycle' in label:
+        return 'MOTORCYCLE'
+
+    if 'bicycle' in label:
+        return 'BICYCLE'
+
+    if 'pedestrian' in label:
+        return 'PEDESTRIAN'
+
+    if 'traffic_cone' in label:
+        return 'ON_ROAD_OBSTACLE'
 
 
 def get_box_corners(box, wlh_factor: float = 1.0) -> np.ndarray:
@@ -253,10 +289,11 @@ def visual(points, gt_anno, det, i, eval_range=100, conf_th=0.5):
     )  # Slightly bigger to include boxes that extend beyond the range.
     ax.set_xlim(-axes_limit, axes_limit)
     ax.set_ylim(-axes_limit, axes_limit)
-    plt.axis("off")
+    #plt.axis("off")
 
-    plt.savefig(f"demo/{token}_file%02d.png" % i)
-    plt.close('all')
+    plt.show()
+    # plt.savefig(f"demo/{token}_file%02d.png" % i)
+    # plt.close('all')
 
 def read_file(path, tries=2, num_point_feature=4):
     points = None
@@ -278,13 +315,27 @@ def read_file(path, tries=2, num_point_feature=4):
 def visualize_argoverse_detections():
     """ """
     #pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
-    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
+    #pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/argoverse_val_correct_prediction.pkl"
+    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/2020-12-23-argoverse_test_prediction.pkl"
+    #prediction.pkl"
+
+    #pkl_fpath = '/Users/jlambert/Downloads/argoverse-centerpoint-simplified/argoverse_val_correct_prediction.pkl'
+    
     pkl_data = load_pkl_dictionary(pkl_fpath)
     
-    argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
-    
+    argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/test"
+    #argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
+    #argoverse_root = "/Users/jlambert/Downloads/argoverse-tracking/val"
+    predictions_root = "argoverse-test-predictions-corrected-egovehicle-frame-2020-12-23"
+    split = 'test' # 'val'
+
+
+    sweep_idx = 0
+    num_sweeps = len(pkl_data.keys())
     for token, sweep_output in pkl_data.items():
-        print(token)
+        print(f'On {sweep_idx}/{num_sweeps}')
+        sweep_idx += 1
+        print(f'\t{token}')
         lidar_subpath = sweep_output['metadata']["token"]
         log_id = lidar_subpath.split('/')[0]
         lidar_fpath = f'{argoverse_root}/{lidar_subpath}'
@@ -298,20 +349,98 @@ def visualize_argoverse_detections():
         lidar_SE3_egovehicle = egovehicle_SE3_lidar.inverse()
         points = lidar_SE3_egovehicle.transform_point_cloud(points)
         
-        gt_anno = sweep_output["annos"]
-        num_boxes = len(gt_anno[0]['names'])
-        gt_obj_classnames = gt_anno[0]['names']
-        gt_obj_classnames = [ 'barrier' if name in ['vehicle','ignore'] else name for name in gt_obj_classnames]
-        annos = {
-            'box3d_lidar': gt_anno[0]['boxes'],
-            'scores': np.ones(num_boxes),
-            'label_preds': [ nuscenes_class_names.index(name) for name in gt_obj_classnames]
+        if split != 'test':
+            gt_anno = sweep_output["annos"]
+            num_boxes = len(gt_anno[0]['names'])
+            gt_obj_classnames = gt_anno[0]['names']
+            gt_obj_classnames = [ 'barrier' if name in ['vehicle','ignore'] else name for name in gt_obj_classnames]
+            annos = {
+                'box3d_lidar': gt_anno[0]['boxes'],
+                'scores': np.ones(num_boxes),
+                'label_preds': [ nuscenes_class_names.index(name) for name in gt_obj_classnames]
+            }
+
+        #visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
+        convert_dets_to_argoverse_format(pkl_data[token], egovehicle_SE3_lidar, predictions_root, conf_th=0.5)
+
+
+def rotmat2quat(R: np.ndarray) -> np.ndarray:
+    """  """
+    q_scipy =  Rotation.from_matrix(R).as_quat()
+    return quat_scipy2argo(q_scipy)
+
+
+def quat_scipy2argo(q_scipy: np.ndarray) -> np.ndarray:
+    """Re-order Argoverse's scalar-first [w,x,y,z] quaternion order to Scipy's scalar-last [x,y,z,w]"""
+    x, y, z, w = q_scipy
+    q_argo = np.array([w, x, y, z])
+    return q_argo
+
+
+def convert_dets_to_argoverse_format(
+    dets_dict,
+    egovehicle_SE3_lidar: SE3,
+    predictions_root: str,
+    conf_th: float
+):
+    """ """
+    token = dets_dict['metadata']['token']
+
+    log_id = token.split('/')[0]
+    lidar_fname = Path(token.split('/')[-1]).stem
+    lidar_timestamp = int(lidar_fname.split('_')[-1])
+
+    log_dets_dir = os.path.join(predictions_root, log_id, f"per_sweep_annotations_amodal")
+    if not os.path.exists(log_dets_dir):
+        os.makedirs(log_dets_dir)
+
+    # just for this sweep
+    tracked_labels = []
+
+    boxes_est = _second_det_to_nusc_box(dets_dict)
+    for box in boxes_est:
+
+        # move from lidar frame to egovehicle frame
+        width, length, height = box.wlh.astype(np.float64)
+
+        nuscenes_classname = nuscenes_class_names[box.label]
+
+        lidar_SE3_object = SE3(
+            rotation=quat2rotmat(list(box.orientation)),
+            translation=box.center
+        )
+
+        egovehicle_SE3_object = egovehicle_SE3_lidar.compose(lidar_SE3_object)
+
+        x, y, z = egovehicle_SE3_object.translation.astype(np.float64)
+        qw, qx, qy, qz = rotmat2quat(egovehicle_SE3_object.rotation)
+        
+        # if box.score < 0.5:
+        #     continue
+
+        label = {
+            "center": {"x": x, "y": y, "z": z},
+            "rotation": {"x": qx , "y": qy, "z": qz, "w": qw},
+            "length": length,
+            "width": width,
+            "height": height,
+            "track_label_uuid": "", # none, for now
+            "timestamp": lidar_timestamp,
+            "label_class": get_argo_label(nuscenes_classname),
+            "score": float(box.score)
         }
-        visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
+
+        #print(label['label_class'], label['center'])
+        tracked_labels.append(label)
     
+    json_fpath = os.path.join(log_dets_dir, f"tracked_object_labels_{lidar_timestamp}.json")
+    save_json_dict(json_fpath, tracked_labels)
+
+
 def visualize_nuscenes_detections():
     """ """
-    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
+    #pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
+    pkl_fpath = "/Users/jlambert/Downloads/argoverse-centerpoint-simplified/nuscenes_prediction.pkl"
     pkl_data = load_pkl_dictionary(pkl_fpath)
     
     for token, sweep_output in pkl_data.items():
@@ -322,9 +451,8 @@ def visualize_nuscenes_detections():
         
         visual(points.T, gt_anno=None, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
     
-    
-    
+
 
 if __name__ == "__main__":
-    #visualize_argoverse_detections()
-    visualize_nuscenes_detections()
+    visualize_argoverse_detections()
+    #visualize_nuscenes_detections()
