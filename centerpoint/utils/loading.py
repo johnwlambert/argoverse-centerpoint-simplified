@@ -144,7 +144,7 @@ class LoadPointCloudAnnotations(object):
 
 
 class LoadPointCloudFromFile(object):
-    def __init__(self, dataset="KittiDataset", **kwargs):
+    def __init__(self, dataset: str = "KittiDataset", **kwargs):
         self.type = dataset
         self.random_select = kwargs.get("random_select", False)
         self.npoints = kwargs.get("npoints", 16834)
@@ -156,12 +156,21 @@ class LoadPointCloudFromFile(object):
     ) -> Tuple[ Dict[str,Any], Dict[str,Any] ]:
         """
         Args:
-            res: dictionary with keys
-                'lidar', 'metadata', 'calib', 'cam', 'mode', 'type'
+            res: result dictionary with keys
+                'lidar',
+                'metadata',
+                'calib',
+                'cam',
+                'mode', e.g. 'val
+                'type', e.g. 'NuScenesDataset'
             info: dictionary with keys
                 'lidar_path', 'cam_front_path', 'cam_intrinsic', 'token',
                 'sweeps', 'ref_from_car', 'car_from_global', 'timestamp',
                 'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
+        Returns:
+            res["lidar"]["combined"] is filled with (269370, 5), [x, y, z, intensity, timestamp]
+            res["lidar"]["times"] is (269370, 1)
+            res["lidar"]["points"] is (269370, 4)
         """
         res["type"] = self.type
 
