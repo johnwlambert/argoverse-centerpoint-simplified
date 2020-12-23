@@ -165,9 +165,9 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
                 sweep_labels = dl.get_labels_at_lidar_timestamp(log_id, sample_lidar_timestamp)
 
-                # nuscenes timestamps are in microseconds
-                ref_time_microseconds = sample_lidar_timestamp * 1e-6
-                ref_time = ref_time_microseconds
+                # Argoverse timestamps are in nanoseconds, convert to seconds
+                ref_time_seconds = sample_lidar_timestamp * 1e-9
+                ref_time = ref_time_seconds
                 ref_lidar_path = sample_ply_fpath
 
                 ref_boxes = construct_argoverse_boxes_lidarfr(sweep_labels, lidart0_SE3_egot0)
@@ -208,9 +208,10 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
                     sweep_ply_fpath = log_ply_fpaths[sweep_idx]
                     sweep_lidar_timestamp = int(Path(sweep_ply_fpath).stem.split('_')[-1])
-                    # nuscenes timestamps are in microseconds, must convert!
-                    curr_time_microseconds = sweep_lidar_timestamp * 1e-6
-                    time_lag = ref_time_microseconds - curr_time_microseconds
+                    
+                    # Argoverse timestamps are in seconds, must convert!
+                    curr_time_seconds = sweep_lidar_timestamp * 1e-9
+                    time_lag = ref_time_seconds - curr_time_seconds
                     if sweep_idx == sample_idx:
                         assert time_lag == 0
 
