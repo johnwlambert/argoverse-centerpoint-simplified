@@ -206,7 +206,7 @@ class LoadPointCloudFromFile(object):
             
             token = res['metadata']['token'].replace('/', '_')
             save_fpath = f'pkl/{token}.pkl'
-            save_pkl_dictionary(save_fpath, { 'sweep_points_list': sweep_points_list })
+            #save_pkl_dictionary(save_fpath, { 'sweep_points_list': sweep_points_list })
 
             res["lidar"]["points"] = points
             res["lidar"]["times"] = times
