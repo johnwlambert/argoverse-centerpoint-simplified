@@ -51,7 +51,12 @@ class Preprocess(object):
         """
         Args:
             res: dictionary with keys
-                'lidar', 'metadata', 'calib', 'cam', 'mode', 'type'
+                'lidar',
+                'metadata',
+                'calib',
+                'cam',
+                'mode', e.g. 'val'
+                'type', e.g. 'NuScenesDataset'
             
                 res['lidar'] is also a dictionary, with keys
                     'type', 'points', 'nsweeps', 'annotations', 'times', 'combined'
@@ -62,6 +67,9 @@ class Preprocess(object):
                 'gt_boxes', 'gt_boxes_velocity', 'gt_names', 'gt_boxes_token'
         
                 info['gt_boxes'] has a shape (N, 9), e.g. N=37
+        
+        Returns:
+            res["lidar"]["points"] is updated to contain (N,5) array res["lidar"]["combined"]
         """
         res["mode"] = self.mode
 
