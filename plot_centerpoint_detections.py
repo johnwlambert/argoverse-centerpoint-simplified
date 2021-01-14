@@ -312,23 +312,10 @@ def read_file(path, tries=2, num_point_feature=4):
     return points
 
     
-def visualize_argoverse_detections():
+def visualize_argoverse_detections(args):
     """ """
-    #pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
-    #pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/argoverse_val_correct_prediction.pkl"
-    pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/2020-12-23-argoverse_test_prediction.pkl"
-    #prediction.pkl"
-
-    #pkl_fpath = '/Users/jlambert/Downloads/argoverse-centerpoint-simplified/argoverse_val_correct_prediction.pkl'
-    
-    pkl_data = load_pkl_dictionary(pkl_fpath)
-    
-    argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/test"
-    #argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
-    #argoverse_root = "/Users/jlambert/Downloads/argoverse-tracking/val"
-    predictions_root = "argoverse-test-predictions-corrected-egovehicle-frame-2020-12-23"
-    split = 'test' # 'val'
-
+    pkl_data = load_pkl_dictionary(args.pkl_fpath)
+    split = args.split
 
     sweep_idx = 0
     num_sweeps = len(pkl_data.keys())
@@ -338,9 +325,9 @@ def visualize_argoverse_detections():
         print(f'\t{token}')
         lidar_subpath = sweep_output['metadata']["token"]
         log_id = lidar_subpath.split('/')[0]
-        lidar_fpath = f'{argoverse_root}/{lidar_subpath}'
+        lidar_fpath = f'{args.argoverse_root}/{lidar_subpath}'
         points = load_ply_xyzir(lidar_fpath)[:,:3]
-        calibration_fpath = f'{argoverse_root}/{log_id}/vehicle_calibration_info.json'
+        calibration_fpath = f'{args.argoverse_root}/{log_id}/vehicle_calibration_info.json'
         calib_data = read_json_file(calibration_fpath)
         egovehicle_SE3_lidar = SE3(
             rotation=quat2rotmat(calib_data["vehicle_SE3_up_lidar_"]["rotation"]["coefficients"]),
@@ -361,7 +348,7 @@ def visualize_argoverse_detections():
             }
 
         #visual(points.T, gt_anno=annos, det=pkl_data[token], i=0, eval_range=50, conf_th=0.5)
-        convert_dets_to_argoverse_format(pkl_data[token], egovehicle_SE3_lidar, predictions_root, conf_th=0.5)
+        convert_dets_to_argoverse_format(pkl_data[token], egovehicle_SE3_lidar, args.output_dataroot, conf_th=0.5)
 
 
 def rotmat2quat(R: np.ndarray) -> np.ndarray:
@@ -380,7 +367,7 @@ def quat_scipy2argo(q_scipy: np.ndarray) -> np.ndarray:
 def convert_dets_to_argoverse_format(
     dets_dict,
     egovehicle_SE3_lidar: SE3,
-    predictions_root: str,
+    output_dataroot: str,
     conf_th: float
 ):
     """ """
@@ -390,7 +377,7 @@ def convert_dets_to_argoverse_format(
     lidar_fname = Path(token.split('/')[-1]).stem
     lidar_timestamp = int(lidar_fname.split('_')[-1])
 
-    log_dets_dir = os.path.join(predictions_root, log_id, f"per_sweep_annotations_amodal")
+    log_dets_dir = os.path.join(output_dataroot, log_id, f"per_sweep_annotations_amodal")
     if not os.path.exists(log_dets_dir):
         os.makedirs(log_dets_dir)
 
@@ -437,11 +424,9 @@ def convert_dets_to_argoverse_format(
     save_json_dict(json_fpath, tracked_labels)
 
 
-def visualize_nuscenes_detections():
+def visualize_nuscenes_detections(args):
     """ """
-    #pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
-    pkl_fpath = "/Users/jlambert/Downloads/argoverse-centerpoint-simplified/nuscenes_prediction.pkl"
-    pkl_data = load_pkl_dictionary(pkl_fpath)
+    pkl_data = load_pkl_dictionary(args.pkl_fpath)
     
     for token, sweep_output in pkl_data.items():
         print(token)
@@ -454,5 +439,60 @@ def visualize_nuscenes_detections():
 
 
 if __name__ == "__main__":
-    visualize_argoverse_detections()
-    #visualize_nuscenes_detections()
+    """ Example usage:
+    
+    nuScenes:
+        pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/prediction.pkl"
+        pkl_fpath = "/Users/jlambert/Downloads/argoverse-centerpoint-simplified/nuscenes_prediction.pkl"
+    
+    argoverse:
+        pkl_fpath = "/Users/jlambert/Downloads/prediction.pkl"
+        pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/argoverse_val_correct_prediction.pkl"
+        pkl_fpath = "/home/ubuntu/argoverse-centerpoint-simplified/work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/2020-12-23-argoverse_test_prediction.pkl"
+        prediction.pkl"
+        pkl_fpath = '/Users/jlambert/Downloads/argoverse-centerpoint-simplified/argoverse_val_correct_prediction.pkl'
+    
+        argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/test"
+        argoverse_root = "/home/ubuntu/argoverse/argoverse-tracking/val"
+        argoverse_root = "/Users/jlambert/Downloads/argoverse-tracking/val"
+        
+        output_dataroot = "argoverse-test-predictions-corrected-egovehicle-frame-2020-12-23"
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--split",
+        type=str,
+        required=True,
+        choices = ['val', 'test'],
+        help="which split of the dataset predictions pertain to; if val is specified, ground truth will be loaded",
+    )
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        required=True,
+        choices = ['argoverse', 'nuScenes'],
+        help="which dataset the data came from",
+    )
+    parser.add_argument(
+        '--output_dataroot',
+        type=str,
+        required=True,
+        help="path to directory where the detections will be saved in the Argoverse data format"
+    )
+    parser.add_argument(
+        '--pkl_fpath',
+        type=str,
+        required=True,
+        help='path to pickle file where Centerpoint predictions are saved'
+    )
+    parser.add_argument(
+        '--argoverse_root'
+        type=str,
+        help='dataroot of logs with argoverse raw data, not required for nuScenes of course'
+    )
+    args = parser.parse_args()
+    
+    if args.dataset_name == 'argoverse':
+        visualize_argoverse_detections(args)
+    if args.dataset_name == 'nuScenes':
+        visualize_nuscenes_detections(args)
