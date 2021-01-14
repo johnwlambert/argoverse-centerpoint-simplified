@@ -379,7 +379,7 @@ def main(args):
     pdb.set_trace()
     model = build_detector(logger, cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
 
-    if args.testset:
+    if opts.testset:
         print("Use Test Set")
         dataset = build_dataset(cfg.data.test, args)
     else:
@@ -483,7 +483,7 @@ def main(args):
         for k, v in result_dict["results"].items():
             print(f"Evaluation {k}: {v}")
 
-    if args.txt_result:
+    if opts.txt_result:
         assert False, "No longer support kitti"
 
 if __name__ == "__main__":
@@ -506,10 +506,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     if args.dataset_name == "argoverse":
-        args.nsweeps = 5 # 10 hz LiDAR
+        args.nsweeps = 5 # 10 hz LiDAR, so 100 ms per sweep, cover 500 ms
     
     elif args.dataset_name == "nuScenes":
-        args.nsweeps = 10 # 20 hz LiDAR
+        args.nsweeps = 10 # 20 hz LiDAR, so 50 ms per sweep, cover 500 ms
     
     main(args)
 
