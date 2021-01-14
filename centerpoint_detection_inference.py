@@ -473,7 +473,7 @@ def main(args):
     if not os.path.exists(opts.work_dir):
         os.makedirs(opts.work_dir)
     
-    pkl_fpath = os.path.join(opts.work_dir, 'prediction.pkl')
+    pkl_fpath = os.path.join(opts.work_dir, args.pkl_save_fname)
     save_pkl_dictionary(pkl_fpath, predictions)
     predictions = load_pkl_dictionary(pkl_fpath)
     
@@ -501,8 +501,15 @@ if __name__ == "__main__":
         default='argoverse',
         type=str,
         choices = ['argoverse','nuScenes'],
-        help="if val, will process detection labels"
+        help="which dataset does this input data come from?"
     )
+    parser.add_argument(
+        '--pkl_save_fname',
+        default='2020-01-13-argoverse_test_prediction.pkl',
+        type=str,
+        help="name of pickle file where predictions will be saved to"
+    )
+    
     args = parser.parse_args()
     
     if args.dataset_name == "argoverse":
