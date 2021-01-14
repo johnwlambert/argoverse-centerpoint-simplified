@@ -35,9 +35,16 @@ from argoverse.utils.pkl_utils import load_pkl_dictionary, save_pkl_dictionary
 
 from centerpoint.utils.config import Config
 from centerpoint.registry import DETECTORS
-# from det3d.torchie.trainer import load_checkpoint
-# from det3d.torchie.trainer.utils import all_gather
 
+from centerpoint.dataset.centerpoint_dataloader import build_dataloader
+from centerpoint.nuscenes_dataset import NuScenesDataset
+from centerpoint.nuscenes_dataset import Reformat
+from centerpoint.utils.checkpoint import load_checkpoint
+from centerpoint.utils.compose import Compose
+from centerpoint.utils.loading import LoadPointCloudAnnotations, LoadPointCloudFromFile
+from centerpoint.utils.preprocess import AssignLabel, Preprocess
+from centerpoint.utils.test_aug import DoubleFlip
+from centerpoint.utils.voxel_generator import Voxelization
 
 """
 python tools/dist_test.py configs/centerpoint/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset.py --work_dir work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset  --checkpoint work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/epoch_20.pth  --speed_test 
@@ -50,28 +57,6 @@ https://github.com/tianweiy/CenterPoint/blob/master/configs/centerpoint/nusc_cen
 def save_pred(pred, root):
     with open(os.path.join(root, "prediction.pkl"), "wb") as f:
         pickle.dump(pred, f)
-
-
-def parse_args():
-    """ """
-    args_dict = {
-        'config': 'configs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset.py',
-        'work_dir': 'work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset',
-        'checkpoint': 'work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/epoch_20.pth',
-        'txt_result': False,
-        'gpus': 1,
-        'launcher': 'none',
-        'speed_test': True,
-        'local_rank': 0,
-        'testset': False
-    }
-    args = SimpleNamespace(**args_dict)
-
-    if "LOCAL_RANK" not in os.environ:
-        os.environ["LOCAL_RANK"] = str(args.local_rank)
-
-    return args
-
 
 
 def get_dist_info():
@@ -256,22 +241,13 @@ def build_from_cfg(logger, cfg, registry, default_args=None):
 
 
 
-def build_dataset(cfg, default_args=None):
+def build_dataset(cfg, args):
     """ """
     pdb.set_trace()
 
-    from centerpoint.utils.preprocess import AssignLabel, Preprocess
-    from centerpoint.utils.test_aug import DoubleFlip
-    from centerpoint.utils.loading import LoadPointCloudAnnotations, LoadPointCloudFromFile
-    from centerpoint.utils.compose import Compose
-    from centerpoint.nuscenes_dataset import Reformat
-    from centerpoint.utils.voxel_generator import Voxelization
-
-    from centerpoint.nuscenes_dataset import NuScenesDataset
-    
-    nsweeps = 5 # 10 # 
-    dataset_name = 'argoverse' # 'nuScenes' # 
-    split = 'val' # 'test' # 
+    nsweeps = args.nsweeps
+    dataset_name = args.dataset_name
+    split = args.split
     
     if split == 'test':
         info_path = f'data/{dataset_name}/infos_test_{str(nsweeps).zfill(2)}sweeps_withvelo.pkl'
@@ -355,25 +331,45 @@ def build_dataset(cfg, default_args=None):
     return dataset
 
 
-
-def main():
+def load_opts():
     """ """
-    args = parse_args()
+    opts_dict = {
+        'config': 'configs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset.py',
+        'work_dir': 'work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset',
+        'checkpoint': 'work_dirs/nusc_centerpoint_voxelnet_dcn_0075voxel_flip_testset/epoch_20.pth',
+        'txt_result': False,
+        'gpus': 1,
+        'launcher': 'none',
+        'speed_test': True,
+        'local_rank': 0,
+        'testset': False
+    }
+    opts = SimpleNamespace(**opts_dict)
+
+    if "LOCAL_RANK" not in os.environ:
+        os.environ["LOCAL_RANK"] = str(opts.local_rank)
+
+    return opts
+
+
+def main(args):
+    """ """
+    opts = load_opts()
 
     pdb.set_trace()
 
-    cfg = Config.fromfile(args.config)
-    cfg.local_rank = args.local_rank
+    cfg = Config.fromfile(opts.config)
+    cfg.local_rank = opts.local_rank
 
     # update configs according to CLI args
-    if args.work_dir is not None:
-        cfg.work_dir = args.work_dir
+    if opts.work_dir is not None:
+        cfg.work_dir = opts.work_dir
 
     distributed = False
     if "WORLD_SIZE" in os.environ:
         distributed = int(os.environ["WORLD_SIZE"]) > 1
 
-    cfg.gpus = args.gpus
+    cfg.gpus = opts.gpus
 
     # init logger before other steps
     logger = get_root_logger(cfg.log_level)
@@ -385,30 +381,27 @@ def main():
 
     if args.testset:
         print("Use Test Set")
-        dataset = build_dataset(cfg.data.test)
+        dataset = build_dataset(cfg.data.test, args)
     else:
         print("Use Val Set")
-        dataset = build_dataset(cfg.data.val)
-
-    from centerpoint.dataset.centerpoint_dataloader import build_dataloader
-    
+        dataset = build_dataset(cfg.data.val, args)
+        
     data_loader = build_dataloader(
         dataset,
-        batch_size=cfg.data.samples_per_gpu if not args.speed_test else 1,
+        batch_size=cfg.data.samples_per_gpu if not opts.speed_test else 1,
         workers_per_gpu=cfg.data.workers_per_gpu,
         dist=distributed,
         shuffle=False,
     )
 
     pdb.set_trace()
-    from centerpoint.utils.checkpoint import load_checkpoint
-    checkpoint = load_checkpoint(model, args.checkpoint, map_location="cpu")
+    checkpoint = load_checkpoint(model, opts.checkpoint, map_location="cpu")
 
     model = model.cuda()
     model.eval()
     mode = "val"
 
-    logger.info(f"work dir: {args.work_dir}")
+    logger.info(f"work dir: {opts.work_dir}")
     # if cfg.local_rank == 0:
     #     prog_bar = torchie.ProgressBar(len(data_loader.dataset) // cfg.gpus)
 
@@ -439,7 +432,7 @@ def main():
 
         with torch.no_grad():
             outputs = batch_processor(
-                model, data_batch, train_mode=False, local_rank=args.local_rank,
+                model, data_batch, train_mode=False, local_rank=opts.local_rank,
             )
         for output in outputs:
             
@@ -472,20 +465,19 @@ def main():
 
     print("\n Total time per frame: ", (time_end -  time_start) / (end - start))
 
-    if args.local_rank != 0:
+    if opts.local_rank != 0:
         return
 
     predictions = all_predictions
 
-    if not os.path.exists(args.work_dir):
-        os.makedirs(args.work_dir)
-
+    if not os.path.exists(opts.work_dir):
+        os.makedirs(opts.work_dir)
     
-    pkl_fpath = os.path.join(args.work_dir, 'prediction.pkl')
+    pkl_fpath = os.path.join(opts.work_dir, 'prediction.pkl')
     save_pkl_dictionary(pkl_fpath, predictions)
     predictions = load_pkl_dictionary(pkl_fpath)
     
-    result_dict, _ = dataset.evaluation(copy.deepcopy(predictions), output_dir=args.work_dir, testset=args.testset)
+    result_dict, _ = dataset.evaluation(copy.deepcopy(predictions), output_dir=opts.work_dir, testset=opts.testset)
 
     if result_dict is not None:
         for k, v in result_dict["results"].items():
@@ -495,6 +487,30 @@ def main():
         assert False, "No longer support kitti"
 
 if __name__ == "__main__":
-    main()
+    """ """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--split',
+        default='test',
+        type=str,
+        choices = ['val', 'test'],
+        help="if val, will process detection labels"
+    )
+    parser.add_argument(
+        '--dataset_name',
+        default='argoverse',
+        type=str,
+        choices = ['argoverse','nuScenes'],
+        help="if val, will process detection labels"
+    )
+    args = parser.parse_args()
+    
+    if args.dataset_name == "argoverse":
+        args.nsweeps = 5 # 10 hz LiDAR
+    
+    elif args.dataset_name == "nuScenes":
+        args.nsweeps = 10 # 20 hz LiDAR
+    
+    main(args)
 
 
