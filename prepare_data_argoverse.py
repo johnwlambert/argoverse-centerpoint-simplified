@@ -165,6 +165,9 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 sample_lidar_timestamp = int(Path(sample_ply_fpath).stem.split('_')[-1])
 
                 city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, sample_lidar_timestamp)
+                if city_SE3_egot0 is None:
+                    print(f'Missing pose for {sample_idx}/{num_log_sweeps}')
+                    continue
                 egot0_SE3_city = city_SE3_egot0.inverse()
 
                 sweep_labels = dl.get_labels_at_lidar_timestamp(log_id, sample_lidar_timestamp)
