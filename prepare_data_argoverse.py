@@ -158,7 +158,11 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
             lidart0_SE3_egot0 = egovehicle_SE3_lidar.inverse()
 
             num_log_sweeps = len(log_ply_fpaths)
+            min_valid_idx = 0
             for sample_idx, sample_ply_fpath in enumerate(log_ply_fpaths):
+                if sample_idx < min_valid_idx:
+                    print('sample_idx {sample_idx} < {min_valid_idx}, which is first valid')
+                    continue
                 if sample_idx % 100 == 0:
                     print(f'\t{log_id}: On {sample_idx}/{num_log_sweeps}')
 
@@ -167,6 +171,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, sample_lidar_timestamp)
                 if city_SE3_egot0 is None:
                     print(f'Missing pose for {sample_idx}/{num_log_sweeps}')
+                    min_valid_idx = sample_idx + 1
                     continue
                 egot0_SE3_city = city_SE3_egot0.inverse()
 
@@ -204,7 +209,8 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 sweep_idxs = np.arange(sample_idx - nsweeps + 1, sample_idx)
 
                 # if there are no samples before, just pad with the same sample
-                sweep_idxs = np.clip(sweep_idxs, a_min=0, a_max=sample_idx - 1)
+                sweep_idxs = np.clip(sweep_idxs, a_min=min_valid_idx, a_max=sample_idx - 1)
+                print('Sweep comprised of ', sweep_idxs)
                 
                 info["sample"] = {
                     "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
