@@ -6,7 +6,7 @@ import pdb
 import pickle
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from argoverse.utils.pkl_utils import save_pkl_dictionary
@@ -114,7 +114,7 @@ def construct_argoverse_boxes_lidarfr(sweep_labels: List[Dict[str,Any]], lidar_S
 
 
 
-def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_zero: bool = True):
+def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_zero: bool = True) -> List[Any]:
     """
     Our reference channel is "UP_LIDAR", similar to nuScenes' "LIDAR_TOP"
     channel from which we track back n sweeps to aggregate the point cloud.
@@ -135,6 +135,10 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
         is_test = split == 'test'
 
         split_root_path = f'{root_path}/{split_subdir}'
+        if not Path(split_root_path).exists():
+            print(f'Skipping {split_subdir}: {split_root_path} does not exist')
+            continue
+            
         dl = SimpleArgoverseTrackingDataLoader(data_dir=split_root_path, labels_dir=split_root_path)
         valid_log_ids = dl.sdb.get_valid_logs()
         # loop through all of the logs
@@ -306,21 +310,24 @@ def quaternion_yaw_scipy(q: Quaternion) -> float:
 
 
 def create_argoverse_infos(
+    pkl_save_dirpath: str, 
     root_path: str,
     nsweeps: int = 10,
     filter_zero: bool = True,
 ):
     """ """
-    save_path = "data/argoverse"
-
     for split in ['val', 'test', 'train']:
         print(f'Preparing split {split}')
         split_argoverse_infos = _fill_trainval_infos(split, root_path, nsweeps=nsweeps, filter_zero=filter_zero)
+        
+        if len(split_argoverse_infos) == 0:
+            print(f'Nothing populated for {split}, skipping')
+            continue
 
         if split in ['train', 'val']:
-            pkl_fpath = f'{save_path}/infos_{split}_{nsweeps:02d}sweeps_withvelo_filter_{filter_zero}.pkl'
+            pkl_fpath = f'{pkl_save_dirpath}/infos_{split}_{nsweeps:02d}sweeps_withvelo_filter_{filter_zero}.pkl'
         else:
-            pkl_fpath = f'{save_path}/infos_{split}_{nsweeps:02d}sweeps_withvelo.pkl'
+            pkl_fpath = f'{pkl_save_dirpath}/infos_{split}_{nsweeps:02d}sweeps_withvelo.pkl'
         
         print(f"{split} sample: {len(split_argoverse_infos)}")
         save_pkl_dictionary(pkl_fpath, split_argoverse_infos)
@@ -341,7 +348,15 @@ if __name__ == "__main__":
         required=True,
         help='where logs live on disk'
     )
+    parser.add_argument(
+        '--pkl_save_dirpath',
+        type=str,
+        required=True,
+        help='where to save populated pkl files with sweep metadata'
+    )
     args = parser.parse_args()
     create_argoverse_infos(
-        root_path=args.argoverse_dataset_root, nsweeps=5 # not using 10 for Argoverse
+        pkl_save_dirpath=args.pkl_save_dirpath
+        root_path=args.argoverse_dataset_root,
+        nsweeps=5 # not using 10 for Argoverse
     )
