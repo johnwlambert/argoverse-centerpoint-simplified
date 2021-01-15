@@ -1,5 +1,5 @@
 
-
+import argparse
 import copy
 import os.path as osp
 import pdb
@@ -328,11 +328,20 @@ def create_argoverse_infos(
 
 
 if __name__ == "__main__":
-    """ """
-    #ARGOVERSE_DATASET_ROOT = "data/argoverse"
-    ARGOVERSE_DATASET_ROOT = '/home/ubuntu/argoverse/argoverse-tracking'
-    #ARGOVERSE_DATASET_ROOT = '/srv/share/cliu324/argoverse-tracking-readonly'
-    create_argoverse_infos(
-        root_path=ARGOVERSE_DATASET_ROOT, nsweeps=5 # not using 10 for Argoverse
+    """
+    Example usage:
+        ARGOVERSE_DATASET_ROOT = "data/argoverse"
+        ARGOVERSE_DATASET_ROOT = '/home/ubuntu/argoverse/argoverse-tracking'
+        ARGOVERSE_DATASET_ROOT = '/srv/share/cliu324/argoverse-tracking-readonly'
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--argoverse_dataset_root',
+        type=str,
+        required=True,
+        help='where logs live on disk'
     )
-
+    args = parser.parse_args()
+    create_argoverse_infos(
+        root_path=args.argoverse_dataset_root, nsweeps=5 # not using 10 for Argoverse
+    )
