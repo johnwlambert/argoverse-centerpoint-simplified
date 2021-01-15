@@ -356,7 +356,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     create_argoverse_infos(
-        pkl_save_dirpath=args.pkl_save_dirpath
+        pkl_save_dirpath=args.pkl_save_dirpath,
         root_path=args.argoverse_dataset_root,
         nsweeps=5 # not using 10 for Argoverse
     )
