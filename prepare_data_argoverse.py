@@ -160,9 +160,6 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
             num_log_sweeps = len(log_ply_fpaths)
             min_valid_idx = 0
             for sample_idx, sample_ply_fpath in enumerate(log_ply_fpaths):
-                if sample_idx < min_valid_idx:
-                    print('sample_idx {sample_idx} < {min_valid_idx}, which is first valid')
-                    continue
                 if sample_idx % 100 == 0:
                     print(f'\t{log_id}: On {sample_idx}/{num_log_sweeps}')
 
@@ -171,6 +168,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, sample_lidar_timestamp)
                 if city_SE3_egot0 is None:
                     print(f'Missing pose for {sample_idx}/{num_log_sweeps}')
+                    # move the backstop forward
                     min_valid_idx = sample_idx + 1
                     continue
                 egot0_SE3_city = city_SE3_egot0.inverse()
