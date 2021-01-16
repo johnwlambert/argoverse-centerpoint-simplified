@@ -1,8 +1,11 @@
-# argoverse-centerpoint-simplified
+# CenterPoint for Argoverse Data
+
+This repository is a simplified version of the [original CenterPoint repo](https://github.com/tianweiy/CenterPoint), with far less code, designed purely for inference (not for training).
 
 ## Installation
 
-I used Python 3.8.3
+Environment:
+- Python 3.8.3
 
 **Dependencies**
 - SparseConv (build locally)
