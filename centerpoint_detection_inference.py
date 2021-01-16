@@ -511,7 +511,7 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    if args.dataset_name == "argoverse":
+    if "argoverse" in args.dataset_name:
         args.nsweeps = 5 # 10 hz LiDAR, so 100 ms per sweep, cover 500 ms
     
     elif args.dataset_name == "nuScenes":
