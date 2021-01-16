@@ -160,8 +160,8 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
             pdb.set_trace()
             all_lidar_timestamps = [ int(Path(ply_fpath).stem.split('_')[-1]) for ply_fpath in log_ply_fpaths]
             has_valid_pose = [dl.get_city_SE3_egovehicle(log_id, ts) is not None for ts in all_lidar_timestamps]
-            valid_idxs = np.where([ np.array(has_valid_pose) == True])[0]
-            first_valid_idx =  np.argmin(valid_idxs)
+            valid_idxs = np.where( np.array(has_valid_pose) == True)[0]
+            first_valid_idx =  np.min(valid_idxs)
             log_ply_fpaths = log_ply_fpaths[first_valid_idx:]
 
             num_log_sweeps = len(log_ply_fpaths)
