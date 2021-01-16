@@ -156,9 +156,16 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 translation=np.array(log_calib_data['vehicle_SE3_up_lidar_']['translation'])
             )
             lidart0_SE3_egot0 = egovehicle_SE3_lidar.inverse()
+            
+            pdb.set_trace()
+            all_lidar_timestamps = [ int(Path(ply_fpath).stem.split('_')[-1]) for ply_fpath in log_ply_fpaths]
+            has_valid_pose = [dl.get_city_SE3_egovehicle(log_id, ts) is not None for ts in all_lidar_timestamps]
+            valid_idxs = np.where([ np.array(has_valid_pose) == True])[0]
+            first_valid_idx =  np.argmin(valid_idxs)
+            log_ply_fpaths = log_ply_fpaths[first_valid_idx:]
 
             num_log_sweeps = len(log_ply_fpaths)
-            min_valid_idx = 0
+
             for sample_idx, sample_ply_fpath in enumerate(log_ply_fpaths):
                 if sample_idx % 100 == 0:
                     print(f'\t{log_id}: On {sample_idx}/{num_log_sweeps}')
@@ -168,8 +175,6 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 city_SE3_egot0 = dl.get_city_SE3_egovehicle(log_id, sample_lidar_timestamp)
                 if city_SE3_egot0 is None:
                     print(f'Missing pose for {sample_idx}/{num_log_sweeps}')
-                    # move the backstop forward
-                    min_valid_idx = sample_idx + 1
                     continue
                 egot0_SE3_city = city_SE3_egot0.inverse()
 
@@ -207,8 +212,8 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 sweep_idxs = np.arange(sample_idx - nsweeps + 1, sample_idx)
 
                 # if there are no samples before, just pad with the same sample
-                sweep_idxs = np.clip(sweep_idxs, a_min=min_valid_idx, a_max=sample_idx - 1)
-                print('Sweep comprised of ', sweep_idxs)
+                sweep_idxs = np.clip(sweep_idxs, a_min=0, a_max=sample_idx - 1)
+                print('Sweep comprised of ', sweep_idxs, ' at sample={sample_idx}')
                 
                 info["sample"] = {
                     "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
