@@ -157,7 +157,6 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
             )
             lidart0_SE3_egot0 = egovehicle_SE3_lidar.inverse()
             
-            pdb.set_trace()
             all_lidar_timestamps = [ int(Path(ply_fpath).stem.split('_')[-1]) for ply_fpath in log_ply_fpaths]
             has_valid_pose = [dl.get_city_SE3_egovehicle(log_id, ts) is not None for ts in all_lidar_timestamps]
             valid_idxs = np.where( np.array(has_valid_pose) == True)[0]
@@ -213,7 +212,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
 
                 # if there are no samples before, just pad with the same sample
                 sweep_idxs = np.clip(sweep_idxs, a_min=0, a_max=sample_idx - 1)
-                print('Sweep comprised of ', sweep_idxs, ' at sample={sample_idx}')
+                print('Sweep comprised of ', sweep_idxs, f' at sample={sample_idx}')
                 
                 info["sample"] = {
                     "lidar_path": f'{split_subdir}/{log_id}/lidar/{Path(sample_ply_fpath).name}',
