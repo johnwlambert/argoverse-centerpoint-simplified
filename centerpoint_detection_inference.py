@@ -500,8 +500,7 @@ if __name__ == "__main__":
         '--dataset_name',
         default='argoverse',
         type=str,
-        choices = ['argoverse','nuScenes'],
-        help="which dataset does this input data come from?"
+        help="which dataset does this input data come from?, e.g. `argoverse`, `nuScenes`, etc"
     )
     parser.add_argument(
         '--pkl_save_fname',
