@@ -486,7 +486,7 @@ if __name__ == "__main__":
         help='path to pickle file where Centerpoint predictions are saved'
     )
     parser.add_argument(
-        '--argoverse_root'
+        '--argoverse_root',
         type=str,
         help='dataroot of logs with argoverse raw data, not required for nuScenes of course'
     )
