@@ -492,7 +492,7 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     
-    if args.dataset_name == 'argoverse':
+    if 'argoverse' in args.dataset_name:
         visualize_argoverse_detections(args)
-    if args.dataset_name == 'nuScenes':
+    elif args.dataset_name == 'nuScenes':
         visualize_nuscenes_detections(args)
