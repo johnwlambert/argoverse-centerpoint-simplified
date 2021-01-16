@@ -471,8 +471,7 @@ if __name__ == "__main__":
         "--dataset_name",
         type=str,
         required=True,
-        choices = ['argoverse', 'nuScenes'],
-        help="which dataset the data came from",
+        help="which dataset the data came from, e.g. `argoverse`, `nuScenes`",
     )
     parser.add_argument(
         '--output_dataroot',
