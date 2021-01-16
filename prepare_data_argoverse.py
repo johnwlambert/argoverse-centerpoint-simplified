@@ -211,7 +211,7 @@ def _fill_trainval_infos(split: str, root_path: str, nsweeps: int = 10, filter_z
                 sweep_idxs = np.arange(sample_idx - nsweeps + 1, sample_idx)
 
                 # if there are no samples before, just pad with the same sample
-                sweep_idxs = np.maximum(sweep_idxs, np.zeros(num_sweeps-1) )
+                sweep_idxs = np.maximum(sweep_idxs, np.zeros(nsweeps-1) )
                 print('Sweep comprised of ', sweep_idxs, f' at sample={sample_idx}')
                 
                 info["sample"] = {
