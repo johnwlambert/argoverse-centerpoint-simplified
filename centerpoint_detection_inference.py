@@ -458,8 +458,6 @@ def main(args):
             # optionally dump the input!
             # detections[token]["input_coordinates"] = data_batch["coordinates"].to(cpu_device)
             # detections[token]["input_voxels"] = data_batch["voxels"].to(cpu_device)
-        if i > 100:
-            break
 
     all_predictions = detections
 
